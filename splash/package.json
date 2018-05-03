@@ -1,0 +1,32 @@
+{
+    "name": "mmWave_Demo_Visualizer",
+    "main": "splashscreen.html",
+    "chromium-args": "--ignore-certificate-errors --disable-web-security --user-data-dir",
+    "single-instance": false,
+    "standalone_app": true,
+    "application_name": "mmWave Demo Visualizer",
+    "splash_app_name": "mmWave Demo Visualizer",
+    "splash_title": "mmWave Demo Visualizer",
+    "splash_application_name": " ",
+    "splash_copyright_notice": "Copyright 2017.",
+    "splash_version": "1.2.0",
+    "main_width": 1200,
+    "main_height": 800,
+    "target_out_foldername": "target",
+    "debug_splashscreen_enabled": false,
+    "debug_server": false,
+    "window": {
+        "show": false,
+        "frame": false,
+        "position": "center",
+        "width": 560,
+        "height": 270,
+        "min_width": 560,
+        "min_height": 270,
+        "icon": "gui_icon.png"
+    },
+    "node-remote": [
+        "http://*/*",
+        "http://127.0.0.1:*/*"
+    ]
+}

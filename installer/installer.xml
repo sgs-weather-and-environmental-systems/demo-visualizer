@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<properties>
+   <application>mmWave_Demo_Visualizer</application>
+   <icon>mmWave_Demo_Visualizer/installer/GUIDesigner_projectShortcut.ico</icon>
+   <banner>mmWave_Demo_Visualizer/installer/installerTopBanner.gif</banner>
+   <licensefile>mmWave_Demo_Visualizer/installer/license.txt</licensefile>
+   <readme>mmWave_Demo_Visualizer/docs/readme.txt</readme>
+   <releasenotes>mmWave_Demo_Visualizer/docs/readme.txt</releasenotes>
+<gcruntime_version>5.0.0</gcruntime_version>
+<app_version>1.2.0</app_version>
+   <components_version>1.7</components_version>
+</properties>

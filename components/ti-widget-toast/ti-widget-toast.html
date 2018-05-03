@@ -1,0 +1,265 @@
+<!--
+    Copyright (c) 2016, Texas Instruments Incorporated
+    All rights reserved.
+
+    Redistribution and use in source and binary forms, with or without
+    modification, are permitted provided that the following conditions
+    are met:
+
+    *   Redistributions of source code must retain the above copyright
+    notice, this list of conditions and the following disclaimer.
+    notice, this list of conditions and the following disclaimer in the
+    documentation and/or other materials provided with the distribution.
+    *   Neither the name of Texas Instruments Incorporated nor the names of
+    its contributors may be used to endorse or promote products derived
+    from this software without specific prior written permission.
+
+    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+    AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+    THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+    PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+    CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+    EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+    PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+    OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+    WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+    OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+    EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+-->
+<link rel="import" href="../polymer/polymer.html">
+<link rel="import" href="../iron-flex-layout/iron-flex-layout.html">
+<link rel="import" href="../iron-icon/iron-icon.html">
+<link rel="import" href="../iron-icons/iron-icons.html">
+
+<!--
+`ti-widget-toast`
+
+Toast widget - a popup message window for displaying error and warning text to the user.
+
+Example:
+
+    <ti-widget-toast message="This is my error message to you."></ti-widget-toast>
+
+@group TI Core
+@element ti-widget-toast
+@demo demo.html
+-->
+<dom-module id="ti-widget-toast">
+
+	<template>
+		<style>
+			:host {
+				overflow: hidden;
+				padding: 5px;
+			}
+
+			#toast {
+				@apply(--layout-horizontal);
+				@apply(--layout-center);
+				background-color: var(--ti-widget-toast-background-color, red);
+				color: var(--ti-widget-toast-color, white);
+				position: static;
+				width: 100%;
+				height: 100%;
+				margin: 0px;
+				box-shadow: 0 2px 5px 0 rgba(0, 0, 0, 26);
+				box-sizing: border-box;
+				display: block;
+				font-size: inherit;
+				cursor: default;
+				-webkit-transition: visibility 0.3s, -webkit-transform 0.3s, opacity 0.3s;
+				transition: visibility 0.3s, transform 0.3s, opacity 0.3s;
+				border-radius: 2px;
+				visibility: hidden;
+				opacity: 0;
+				-webkit-transform: translateY(100px);
+				transform: translateY(100px);
+				padding: 4px 16px 4px 16px;
+			}
+			:host(.capsule) #toast {
+				border-radius: 24px;
+			}
+
+			:host(.fit-bottom) #toast {
+				width: 100%;
+				min-width: 0;
+				border-radius: 0;
+				margin: 0;
+			}
+
+			#toast.opened {
+				visibility: visible;
+				opacity: 1;
+				-webkit-transform: translateY(0px);
+				transform: translateY(0px);
+				z-index: 103;
+			}
+			#message {
+				@apply(--layout-flex);
+				white-space: normal;
+				background-color: inherit;
+				color: inherit;
+			}
+			#closeIcon {
+				margin-left: 16px;
+				right: 0;
+				fill: currentColor;
+			}
+			#optionalIcon {
+				margin-right: 16px;
+				fill: currentColor;
+			}
+		</style>
+		<div id="toast">
+			<template is="dom-if" if="[[_showIcon(iconName)]]">
+				<iron-icon id="optionalIcon" icon="[[iconName]]" ></iron-icon>
+			</template>
+			<label id="message">[[message]]</label>
+			<iron-icon id="closeIcon" icon="close" on-click="hideToast"></iron-icon>
+		</div>
+	</template>
+	<script>
+        Polymer(
+            {
+                is: 'ti-widget-toast',
+                properties:
+                    {
+                        /**
+                         * Sets the message to display in the toast.  Setting the message does not cause the toast
+                         * to appear, you still have to toggle the show properties to get the message to be displayed.
+                         *
+                         * @attribute message
+                         * @type boolean
+                         */
+                        message:
+                            {
+                                notify: false,
+                                type: String,
+                                value: undefined,
+                            },
+                        /**
+                         * Sets the duration in seconds that the toast will be visible after toggling the show property.
+                         * When the duration has expired and the user didn't close the toast message manually,
+                         * the show property will automatically toggle back to false, and the toast will disappear.
+                         * If the duration is zero or negative, the toast will persist and must be closed manually by the user.
+                         * The duration propery will only take effect on the next showing of the toast message.
+                         *
+                         * @attribute duration
+                         * @type number
+                         * @default 0
+                         */
+                        duration:
+                            {
+                                notify: false,
+                                type: Number,
+                                value: 0
+                            },
+                        /**
+                         * Controls whether the toast is visible (shown) or not.  It also indicates the current state
+                         * of the toast (showing or not).  If the user toggles off the toast message, this property
+                         * will reflect that.  If a duration is set, then this property will automatically toggle off
+                         * after the duration has expired.
+                         *
+                         * @attribute show
+                         * @type number
+                         * @default 0
+                         */
+                        show:
+                            {
+                                notify: true,
+                                type: Boolean,
+                                value: false,
+                                observer: "_showChanged"
+                            },
+
+                        /**
+                         * Set the color of the toast's message.  The default is determined by the active theme.
+                         *
+                         * @attribute fontColor
+                         * @type string
+                         */
+                        fontColor:
+                            {
+                                notify: false,
+                                type: String,
+                                value: undefined,
+                                observer: "_fontColorChanged"
+                            },
+
+                        /**
+                         * Set the background color of the toast.  The default is determined by the active theme.
+                         *
+                         * @attribute backgroundColor
+                         * @type string
+                         */
+                        backgroundColor:
+                            {
+                                notify: false,
+                                type: String,
+                                value: undefined,
+                                observer: "_backgroundColorChanged"
+                            },
+                        iconName:
+                            {
+                                notify: true,
+                                type: String,
+                                value: ""
+                            }
+                    },
+                _showIcon: function(iconName){
+                    var result = false;
+                    if ((iconName) && (iconName.length > 0)) {
+                        result = true;
+                    }
+                    return result;
+                },
+                _showChanged: function()
+                {
+                    var show = this.show;
+                    if (show != this._showing)
+                    {
+                        this._showing = show || false;
+
+                        if (show && this.duration && +this.duration > 0)
+                        {
+                            if (!this._hideToastCallback)
+                            {
+                                this._hideToastCallback = this.hideToast.bind(this);
+                            }
+                            this._durationTimer = setTimeout(this._hideToastCallback, this.duration * 1000);
+                        }
+                        else if (!show && this._durationTimer)
+                        {
+                            clearTimeout(this._durationTimer);
+                            this._durationTimer = undefined;
+                        }
+
+                        this.toggleClass('opened', show === undefined || show, this.$.toast);
+                    }
+                },
+
+                showToast: function()
+                {
+                    this.show = true;
+                },
+
+                hideToast: function()
+                {
+                    this.show = false;
+                },
+
+                _backgroundColorChanged: function()
+                {
+                    this.customStyle['--ti-widget-toast-background-color'] = this.backgroundColor ? this.backgroundColor : undefined;
+                    this.updateStyles();
+                },
+
+                _fontColorChanged: function()
+                {
+                    this.customStyle['--ti-widget-toast-color'] = this.fontColor ? this.fontColor : undefined;
+                    this.updateStyles();
+                }
+
+            });
+	</script>
+</dom-module>

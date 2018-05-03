@@ -1,0 +1,319 @@
+{
+  "name": "supported-devices",
+  "version": "0.0.1",
+  "uartCcxmlString": [
+    "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>",
+    "<configurations XML_version=\"1.2\" id=\"configurations_0\">",
+    "<configuration XML_version=\"1.2\" id=\"UARTConnection_0\">",
+    "<instance XML_version=\"1.2\" desc=\"UARTConnection_0\" href=\"connections/uart_connection.xml\" id=\"UARTConnection_0\" xml=\"uart_connection.xml\" xmlpath=\"connections\"/>",
+    "<connection XML_version=\"1.2\" id=\"UARTConnection_0\">",
+    "<instance XML_version=\"1.2\" href=\"drivers/gti_uart_driver.xml\" id=\"drivers\" xml=\"gti_uart_driver.xml\" xmlpath=\"drivers\"/>",
+    "<platform XML_version=\"1.2\" id=\"platform_0\">",
+    "<instance XML_version=\"1.2\" desc=\"%DEVICE%_0\" href=\"devices/%DEVICE%.xml\" id=\"%DEVICE%_0\" xml=\"%DEVICE%.xml\" xmlpath=\"devices\"/>",
+    "<device HW_revision=\"1.0\" XML_version=\"1.2\" description=\"%DEVICE%\" id=\"%DEVICE%_0\" partnum=\"%DEVICE%\">",
+    "<cpu HW_revision=\"1.0\" XML_version=\"1.2\" description=\"MSP430 CPU\" id=\"MSP430\" isa=\"MSP430\">",
+    "<property Type=\"stringfield\" Value=\"%SERIALPORT%\" id=\"COM Port\"/>",
+    "</cpu>",
+    "</device>",
+    "</platform>",
+    "</connection>",
+    "</configuration>",
+    "</configurations>"
+  ],
+  "usbCcxmlString": [
+    "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>",
+    "<configurations XML_version=\"1.2\" id=\"configurations_0\">",
+    "<configuration XML_version=\"1.2\" id=\"TI MSP430 USB1_0\">",
+    "<instance XML_version=\"1.2\" desc=\"TI MSP430 USB1_0\" href=\"connections/TIMSP430-USB.xml\" id=\"TI MSP430 USB1_0\" xml=\"TIMSP430-USB.xml\" xmlpath=\"connections\"/>",
+    "<connection XML_version=\"1.2\" id=\"TI MSP430 USB1_0\">",
+    "<instance XML_version=\"1.2\" href=\"drivers/msp430_emu.xml\" id=\"drivers\" xml=\"msp430_emu.xml\" xmlpath=\"drivers\"/>",
+    "<platform XML_version=\"1.2\" id=\"platform_0\">",
+    "<instance XML_version=\"1.2\" desc=\"%DEVICE%_0\" href=\"devices/%DEVICE%.xml\" id=\"%DEVICE%_0\" xml=\"%DEVICE%.xml\" xmlpath=\"devices\"/>",
+    "</platform>",
+    "</connection>",
+    "</configuration>",
+    "</configurations>"
+  ],
+  "xds110CcxmlString": [
+    "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>",
+    "<configurations XML_version=\"1.2\" id=\"configurations_0\">",
+    "<configuration XML_version=\"1.2\" id=\"configuration_0\">",
+    "<instance XML_version=\"1.2\" desc=\"Texas Instruments XDS110 USB Debug Probe\" href=\"connections/TIXDS110_Connection.xml\" id=\"Texas Instruments XDS110 USB Debug Probe\" xml=\"TIXDS110_Connection.xml\" xmlpath=\"connections\"/>",
+    "<connection XML_version=\"1.2\" id=\"Texas Instruments XDS110 USB Debug Probe\">",
+    "<instance XML_version=\"1.2\" href=\"drivers/tixds510cs_dap.xml\" id=\"drivers\" xml=\"tixds510cs_dap.xml\" xmlpath=\"drivers\"/>",
+    "<instance XML_version=\"1.2\" href=\"drivers/tixds510cortexM.xml\" id=\"drivers\" xml=\"tixds510cortexM.xml\" xmlpath=\"drivers\"/>",
+    "<platform XML_version=\"1.2\" id=\"platform_0\">",
+    "<instance XML_version=\"1.2\" desc=\"%DEVICE%\" href=\"devices/%DEVICE%.xml\" id=\"%DEVICE%\" xml=\"%DEVICE%.xml\" xmlpath=\"devices\"/>",
+    "</platform>",
+    "</connection>",
+    "</configuration>",
+    "</configurations>"
+  ],
+  "xds110_icepick_CcxmlString": [
+    "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>",
+    "<configurations XML_version=\"1.2\" id=\"configurations_0\">",
+    "<configuration XML_version=\"1.2\" id=\"configuration_0\">",
+    "<instance XML_version=\"1.2\" desc=\"Texas Instruments XDS110 USB Debug Probe\" href=\"connections/TIXDS110_Connection.xml\" id=\"Texas Instruments XDS110 USB Debug Probe\" xml=\"TIXDS110_Connection.xml\" xmlpath=\"connections\"/>",
+    "<connection XML_version=\"1.2\" id=\"Texas Instruments XDS110 USB Debug Probe\">",
+    "<instance XML_version=\"1.2\" href=\"drivers/tixds510icepick_c.xml\" id=\"drivers\" xml=\"tixds510icepick_c.xml\" xmlpath=\"drivers\"/>",
+    "<instance XML_version=\"1.2\" href=\"drivers/tixds510cs_dap.xml\" id=\"drivers\" xml=\"tixds510cs_dap.xml\" xmlpath=\"drivers\"/>",
+    "<instance XML_version=\"1.2\" href=\"drivers/tixds510cortexM.xml\" id=\"drivers\" xml=\"tixds510cortexM.xml\" xmlpath=\"drivers\"/>",
+    "<property Type=\"choicelist\" Value=\"4\" id=\"SWD Mode Settings\">",
+    "<choice Name=\"cJTAG (1149.7) 2-pin advanced modes\" value=\"enable\">",
+    "<property Type=\"choicelist\" Value=\"1\" id=\"XDS110 Aux Port\"/>",
+    "</choice>",
+    "</property>",
+    "<platform XML_version=\"1.2\" id=\"platform_0\">",
+    "<instance XML_version=\"1.2\" desc=\"CC2650F128\" href=\"devices/cc2650f128.xml\" id=\"CC2650F128\" xml=\"cc2650f128.xml\" xmlpath=\"devices\"/>",
+    "</platform>",
+    "</connection>",
+    "</configuration>",
+    "</configurations>"
+  ],
+  "xds100v2CcxmlString_cla": [
+    "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>",
+    "<configurations XML_version=\"1.2\" id=\"configurations_0\">",
+    "<configuration XML_version=\"1.2\" id=\"Texas Instruments XDS100v2 USB Debug Probe_0\">",
+    "<instance XML_version=\"1.2\" desc=\"Texas Instruments XDS100v2 USB Debug Probe_0\" href=\"connections/TIXDS100v2_Connection.xml\" id=\"Texas Instruments XDS100v2 USB Debug Probe_0\" xml=\"TIXDS100v2_Connection.xml\" xmlpath=\"connections\"/>",
+    "<connection XML_version=\"1.2\" id=\"Texas Instruments XDS100v2 USB Debug Probe_0\">",
+    "<instance XML_version=\"1.2\" href=\"drivers/tixds100v2c28x.xml\" id=\"drivers\" xml=\"tixds100v2c28x.xml\" xmlpath=\"drivers\"/>",
+    "<instance XML_version=\"1.2\" href=\"drivers/tixds100v2cla.xml\" id=\"drivers\" xml=\"tixds100v2cla.xml\" xmlpath=\"drivers\"/>",
+    "<platform XML_version=\"1.2\" id=\"platform_0\">",
+    "<instance XML_version=\"1.2\" desc=\"%DEVICE%\" href=\"devices/%DEVICE%.xml\" id=\"%DEVICE%\" xml=\"%DEVICE%.xml\" xmlpath=\"devices\"/>",
+    "</platform>",
+    "</connection>",
+    "</configuration>",
+    "</configurations>"
+  ],
+  "xds100v2CcxmlString_delfino": [
+    "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>",
+    "<configurations XML_version=\"1.2\" id=\"configurations_0\">",
+    "<configuration XML_version=\"1.2\" id=\"Texas Instruments XDS100v2 USB Debug Probe_0\">",
+    "<instance XML_version=\"1.2\" desc=\"Texas Instruments XDS100v2 USB Debug Probe_0\" href=\"connections/TIXDS100v2_Connection.xml\" id=\"Texas Instruments XDS100v2 USB Debug Probe_0\" xml=\"TIXDS100v2_Connection.xml\" xmlpath=\"connections\"/>",
+    "<connection XML_version=\"1.2\" id=\"Texas Instruments XDS100v2 USB Debug Probe_0\">",
+    "<instance XML_version=\"1.2\" href=\"drivers/tixds100v2icepick_c.xml\" id=\"drivers\" xml=\"tixds100v2icepick_c.xml\" xmlpath=\"drivers\"/>",
+    "<instance XML_version=\"1.2\" href=\"drivers/tixds100v2c28x.xml\" id=\"drivers\" xml=\"tixds100v2c28x.xml\" xmlpath=\"drivers\"/>",
+    "<instance XML_version=\"1.2\" href=\"drivers/tixds100v2cla1.xml\" id=\"drivers\" xml=\"tixds100v2cla1.xml\" xmlpath=\"drivers\"/>",
+    "<instance XML_version=\"1.2\" href=\"drivers/tixds100v2cs_child.xml\" id=\"drivers\" xml=\"tixds100v2cs_child.xml\" xmlpath=\"drivers\"/>",
+    "<platform XML_version=\"1.2\" id=\"platform_0\">",
+    "<instance XML_version=\"1.2\" desc=\"%DEVICE%\" href=\"devices/%DEVICE%.xml\" id=\"%DEVICE%\" xml=\"%DEVICE%.xml\" xmlpath=\"devices\"/>",
+    "</platform>",
+    "</connection>",
+    "</configuration>",
+    "</configurations>"
+  ],
+  "xds100v2CcxmlString": [
+    "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>",
+    "<configurations XML_version=\"1.2\" id=\"configurations_0\">",
+    "<configuration XML_version=\"1.2\" id=\"Texas Instruments XDS100v2 USB Debug Probe_0\">",
+    "<instance XML_version=\"1.2\" desc=\"Texas Instruments XDS100v2 USB Debug Probe_0\" href=\"connections/TIXDS100v2_Connection.xml\" id=\"Texas Instruments XDS100v2 USB Debug Probe_0\" xml=\"TIXDS100v2_Connection.xml\" xmlpath=\"connections\"/>",
+    "<connection XML_version=\"1.2\" id=\"Texas Instruments XDS100v2 USB Debug Probe_0\">",
+    "<instance XML_version=\"1.2\" href=\"drivers/tixds100v2c28x.xml\" id=\"drivers\" xml=\"tixds100v2c28x.xml\" xmlpath=\"drivers\"/>",
+    "<platform XML_version=\"1.2\" id=\"platform_0\">",
+    "<instance XML_version=\"1.2\" desc=\"%DEVICE%\" href=\"devices/%DEVICE%.xml\" id=\"%DEVICE%\" xml=\"%DEVICE%.xml\" xmlpath=\"devices\"/>",
+    "</platform>",
+    "</connection>",
+    "</configuration>",
+    "</configurations>"
+  ],
+  "xds100v3CcxmlString": [
+    "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>",
+    "<configurations XML_version=\"1.2\" id=\"configurations_0\">",
+    "<configuration XML_version=\"1.2\" id=\"Texas Instruments XDS100v3 USB Debug Probe_0\">",
+    "<instance XML_version=\"1.2\" desc=\"Texas Instruments XDS100v3 USB Debug Probe_0\" href=\"connections/TIXDS100v3_Dot7_Connection.xml\" id=\"Texas Instruments XDS100v3 USB Debug Probe_0\" xml=\"TIXDS100v3_Dot7_Connection.xml\" xmlpath=\"connections\"/>",
+    "<connection XML_version=\"1.2\" id=\"Texas Instruments XDS100v3 USB Debug Probe_0\">",
+    "<instance XML_version=\"1.2\" href=\"drivers/tixds100v2icepick_c.xml\" id=\"drivers\" xml=\"tixds100v2icepick_c.xml\" xmlpath=\"drivers\"/>",
+    "<instance XML_version=\"1.2\" href=\"drivers/tixds100v2cs_dap.xml\" id=\"drivers\" xml=\"tixds100v2cs_dap.xml\" xmlpath=\"drivers\"/>",
+    "<instance XML_version=\"1.2\" href=\"drivers/tixds100v2cortexM.xml\" id=\"drivers\" xml=\"tixds100v2cortexM.xml\" xmlpath=\"drivers\"/>",
+    "<property Type=\"choicelist\" Value=\"2\" id=\"The Converter Usage\">",
+    "<choice Name=\"Generate 1149.7 2-pin advanced modes\" value=\"enable\">",
+    "<property Type=\"choicelist\" Value=\"1\" id=\"The Converter 1149.7 Frequency\">",
+    "<choice Name=\"Overclock with user specified value\" value=\"unused\">",
+    "<property Type=\"choicelist\" Value=\"5\" id=\"-- Choose a value from 1.0MHz to 50.0MHz\"/>",
+    "</choice>",
+    "</property>",
+    "<property Type=\"choicelist\" Value=\"5\" id=\"The Target Scan Format\"/>",
+    "</choice>",
+    "</property>",
+    "<platform XML_version=\"1.2\" id=\"platform_0\">",
+    "<instance XML_version=\"1.2\" desc=\"%DEVICE%_0\" href=\"devices/%DEVICE%.xml\" id=\"%DEVICE%_0\" xml=\"%DEVICE%.xml\" xmlpath=\"devices\"/>",
+    "</platform>",
+    "</connection>",
+    "</configuration>",
+    "</configurations>"
+  ],
+  "icdi3200CcxmlString": [
+    "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>",
+    "<configurations XML_version=\"1.2\" id=\"configurations_0\">",
+    "<configuration XML_version=\"1.2\" id=\"Stellaris In-Circuit Debug Interface_0\">",
+    "<instance XML_version=\"1.2\" desc=\"Stellaris In-Circuit Debug Interface_0\" href=\"connections/Stellaris_ICDI_Connection.xml\" id=\"Stellaris In-Circuit Debug Interface_0\" xml=\"Stellaris_ICDI_Connection.xml\" xmlpath=\"connections\"/>",
+    "<connection XML_version=\"1.2\" id=\"Stellaris In-Circuit Debug Interface_0\">",
+    "<instance XML_version=\"1.2\" href=\"drivers/cc3200_cs_icepick.xml\" id=\"drivers\" xml=\"cc3200_cs_icepick.xml\" xmlpath=\"drivers\"/>",
+    "<instance XML_version=\"1.2\" href=\"drivers/stellaris_cs_dap.xml\" id=\"drivers\" xml=\"stellaris_cs_dap.xml\" xmlpath=\"drivers\"/>",
+    "<instance XML_version=\"1.2\" href=\"drivers/cc3200_cortex_m4.xml\" id=\"drivers\" xml=\"cc3200_cortex_m4.xml\" xmlpath=\"drivers\"/>",
+    "<platform XML_version=\"1.2\" id=\"platform_0\">",
+    "<instance XML_version=\"1.2\" desc=\"%DEVICE%_0\" href=\"devices/%DEVICE%.xml\" id=\"%DEVICE%_0\" xml=\"%DEVICE%.xml\" xmlpath=\"devices\"/>",
+    "</platform>",
+    "</connection>",
+    "</configuration>",
+    "</configurations>"
+  ],
+  "icdiCcxmlString": [
+    "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>",
+    "<configurations XML_version=\"1.2\" id=\"configurations_0\">",
+    "<configuration XML_version=\"1.2\" id=\"Stellaris In-Circuit Debug Interface_0\">",
+    "<instance XML_version=\"1.2\" desc=\"Stellaris In-Circuit Debug Interface_0\" href=\"connections/Stellaris_ICDI_Connection.xml\" id=\"Stellaris In-Circuit Debug Interface_0\" xml=\"Stellaris_ICDI_Connection.xml\" xmlpath=\"connections\"/>",
+    "<connection XML_version=\"1.2\" id=\"Stellaris In-Circuit Debug Interface_0\">",
+    "<instance XML_version=\"1.2\" href=\"drivers/stellaris_cs_dap.xml\" id=\"drivers\" xml=\"stellaris_cs_dap.xml\" xmlpath=\"drivers\"/>",
+    "<instance XML_version=\"1.2\" href=\"drivers/stellaris_cortex_m4.xml\" id=\"drivers\" xml=\"stellaris_cortex_m4.xml\" xmlpath=\"drivers\"/>",
+    "<platform XML_version=\"1.2\" id=\"platform_0\">",
+    "<instance XML_version=\"1.2\" desc=\"Tiva %DEVICE%_0\" href=\"devices/%DEVICE%.xml\" id=\"Tiva_%DEVICE%_0\" xml=\"%DEVICE%.xml\" xmlpath=\"devices\"/>",
+    "</platform>",
+    "</connection>",
+    "</configuration>",
+    "</configurations>"
+  ],
+  "devices": {
+    "MSP430G2553": {
+      "ccxml": "usbCcxmlString",
+      "connectionID": "TIMSP430-USB",
+      "xmlDeviceName": "MSP430G2553",
+      "runTargetToReadMemory": false,
+      "runFree": false
+    },
+    "MSP430F5529": {
+      "ccxml": "usbCcxmlString",
+      "connectionID": "TIMSP430-USB",
+      "xmlDeviceName": "MSP430F5529",
+      "runTargetToReadMemory": false,
+      "runFree": false
+    },
+    "MSP430FR4133": {
+      "ccxml": "usbCcxmlString",
+      "connectionID": "TIMSP430-USB",
+      "xmlDeviceName": "MSP430FR4133",
+      "runTargetToReadMemory": false,
+      "runFree": false
+    },
+    "MSP430FR5739": {
+      "ccxml": "usbCcxmlString",
+      "connectionID": "TIMSP430-USB",
+      "xmlDeviceName": "MSP430FR5739",
+      "runTargetToReadMemory": false,
+      "runFree": false
+    },
+    "MSP430FR5994": {
+      "ccxml": "usbCcxmlString",
+      "connectionID": "TIMSP430-USB",
+      "xmlDeviceName": "msp430fr5994",
+      "runTargetToReadMemory": false,
+      "runFree": false
+    },
+    "MSP430FR5969": {
+      "ccxml": "usbCcxmlString",
+      "connectionID": "TIMSP430-USB",
+      "xmlDeviceName": "MSP430FR5969",
+      "runTargetToReadMemory": false,
+      "runFree": false
+    },
+    "MSP430FR6989": {
+      "ccxml": "usbCcxmlString",
+      "connectionID": "TIMSP430-USB",
+      "xmlDeviceName": "MSP430FR6989",
+      "runTargetToReadMemory": false,
+      "runFree": false
+    },
+    "MSP430G2452": {
+      "ccxml": "usbCcxmlString",
+      "connectionID": "TIMSP430-USB",
+      "xmlDeviceName": "MSP430G2452",
+      "runTargetToReadMemory": false,
+      "runFree": false
+    },
+    "MSP432P401R": {
+      "ccxml": "xds110CcxmlString",
+      "connectionID": "TIXDS110_Connection",
+      "xmlDeviceName": "msp432p401r",
+      "runTargetToReadMemory": true,
+      "runFree": false
+    },
+    "TMS320F28027": {
+      "ccxml": "xds100v2CcxmlString",
+      "connectionID": "TIXDS100v2_Connection",
+      "xmlDeviceName": "f28027",
+      "runTargetToReadMemory": true,
+      "runFree": false
+    },
+    "CC2650F128": {
+      "ccxml": "xds110_icepick_CcxmlString",
+      "connectionID": "TIXDS110_Connection",
+      "xmlDeviceName": "cc2650f128",
+      "runTargetToReadMemory": true,
+      "runFree": false
+    },
+    "CC1310F128": {
+      "ccxml": "xds100v3CcxmlString",
+      "connectionID": "TIXDS100v3_Dot7_Connection",
+      "xmlDeviceName": "cc1310f128",
+      "runTargetToReadMemory": true,
+      "runFree": false
+    },
+    "TMS320F28069": {
+      "ccxml": "xds100v2CcxmlString_cla",
+      "connectionID": "TIXDS100v2_Connection",
+      "xmlDeviceName": "f28069",
+      "runTargetToReadMemory": true,
+      "runFree": false
+    },
+    "CC3200": {
+      "ccxml": "icdi3200CcxmlString",
+      "connectionID": "Stellaris_ICDI_Connection",
+      "xmlDeviceName": "CC3200",
+      "runTargetToReadMemory": false,
+      "runFree": false
+    },
+    "TIVA TM4C123GH6PM": {
+      "ccxml": "icdiCcxmlString",
+      "connectionID": "Stellaris_ICDI_Connection",
+      "xmlDeviceName": "tm4c123gh6pm",
+      "runTargetToReadMemory": true,
+      "runFree": false
+    },
+    "TIVA TM4C1294NCPDT": {
+      "ccxml": "icdiCcxmlString",
+      "connectionID": "Stellaris_ICDI_Connection",
+      "xmlDeviceName": "tm4c1294ncpdt",
+      "runTargetToReadMemory": true,
+      "runFree": false
+    },
+    "MSP430F2617": {
+      "ccxml": "uartCcxmlString",
+      "connectionID": "uart_connection",
+      "xmlDeviceName": "MSP430F2617",
+      "runTargetToReadMemory": true,
+      "runFree": true
+    },
+    "MSP430FR2633": {
+      "ccxml": "usbCcxmlString",
+      "connectionID": "TIMSP430-USB3",
+      "xmlDeviceName": "MSP430FR2633",
+      "runTargetToReadMemory": false,
+      "runFree": false
+    },
+    "TMS320F28377D": {
+      "ccxml": "xds100v2CcxmlString",
+      "connectionID": "TIXDS100v2",
+      "xmlDeviceName": "tms320f28377d",
+      "runTargetToReadMemory": false,
+      "runFree": false
+    },
+    "TMS320F28377S": {
+      "ccxml": "xds100v2CcxmlString_delfino",
+      "connectionID": "TIXDS100v2_Connection",
+      "xmlDeviceName": "tms320f28377s",
+      "runTargetToReadMemory": true,
+      "runFree": false
+    }
+  }
+}
+

@@ -1,0 +1,77 @@
+<!doctype html>
+<html>
+
+<head>
+	<title>ti-core-databind Tests</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+	<meta name="mobile-web-app-capable" content="yes">
+	<script src="../../../webcomponentsjs/webcomponents-lite.min.js"></script>
+	<link rel="import" href="../../ti-core-databind.html">
+	<link rel="import" href="../../ti-program-model.html">
+	<link rel="import" href="../../../ti-core-stylesheets/ti-core-stylesheets.html">
+	<link rel="import" href="../../../ti-widget-common/ti-widget-table.html">
+	<script src='../../src/internal/AbstractUnitTestSuite.js'></script>
+	<script src='../../src/internal/expressionParser/ExpressionParserTest.js'></script>
+	<script src='../../src/internal/PacketCodecTest.js'></script>
+	<script src='../../src/internal/DataConverterTest.js'></script>
+	<script src='../../src/internal/pm/ProgramModelTest.js'></script>
+
+	<style>
+        body,
+        html {
+            margin: 0;
+            height: 100%;
+            overflow-y: auto;
+            color: #444;
+        }
+    </style>
+</head>
+
+<body unresolved>
+<!-- ------------------------------------------------------------------------------------- -->
+
+<template id="template_obj" is="dom-bind">
+	<style>    
+		#results {
+			position: absolute;
+			left:10px;
+			right:10px;
+			top:10px;
+			text-align:left;
+		}
+    </style>
+
+	<ti-core-stylesheets id="ti_core_stylesheets"></ti-core-stylesheets>
+	<ti-widget-table id="results" headings="Test Suite,Summary" rows="[[results]]" col-styles="width:1px;white-space:nowrap;height:1px;text-align:left; , width:99%;height:1px;text-align:left;" 
+		heading-styles="font-weight:bold;font-size:18px;width:1px;heigth:1px;text-align:left;white-space:nowrap; , font-weight:bold;font-size:18px;width:99%;heigth:1px;text-align:left;"></ti-widget-table>
+	<div id="debugDiv" style="position:absolute;left:20px;right:20px;visibility:hidden;"><h3>Failures:</h3></div>			
+</template>
+<script>
+	var callback = function(message)
+	{
+		var para = document.createElement('p');
+		para.appendChild(document.createTextNode(message));
+        var div = document.getElementById('debugDiv');
+        div.appendChild(para);
+        div.style.visibility = "visible";
+	};
+
+	addEventListener('WebComponentsReady', function () 
+	{
+		gc.databind.internal.TestSuites.runAll(callback).then(function(results) 
+		{ 
+			var templateObj = window.document.querySelector("#template_obj");
+			templateObj.results = results;
+			
+			setTimeout(function() {
+				var height = document.getElementById('results').clientHeight;
+			    document.getElementById('debugDiv').style.top = height + 20 + 'px';
+			}, 1);
+		    
+		});
+	});
+
+</script>
+</body>
+
+</html>

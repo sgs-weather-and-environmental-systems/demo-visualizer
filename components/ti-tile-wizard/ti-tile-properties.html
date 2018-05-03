@@ -1,0 +1,197 @@
+<!--
+    Copyright (c) 2015, Texas Instruments Incorporated
+    All rights reserved.
+
+    Redistribution and use in source and binary forms, with or without
+    modification, are permitted provided that the following conditions
+    are met:
+
+    *   Redistributions of source code must retain the above copyright
+    notice, this list of conditions and the following disclaimer.
+    notice, this list of conditions and the following disclaimer in the
+    documentation and/or other materials provided with the distribution.
+    *   Neither the name of Texas Instruments Incorporated nor the names of
+    its contributors may be used to endorse or promote products derived
+    from this software without specific prior written permission.
+
+    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+    AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+    THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+    PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+    CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+    EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+    PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+    OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+    WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+    OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+    EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+-->
+<link rel="import" href="../polymer/polymer.html">
+<link rel="import" href="../paper-dialog/paper-dialog.html">
+<link rel="import" href="../paper-button/paper-button.html">
+<link rel="import" href="../paper-icon-button/paper-icon-button.html">
+<link rel="import" href="../paper-input/paper-input.html">
+<link rel="import" href="../paper-tooltip/paper-tooltip.html">
+<link rel="import" href="../iron-icons/iron-icons.html">
+<link rel="import" href="../iron-icon/iron-icon.html">
+<link rel="import" href="../iron-flex-layout/iron-flex-layout.html">
+<link rel="import" href="../x-meta/x-meta.html">
+<dom-module id='ti-tile-properties'  >
+
+    <template>
+        <style is="custom-style">
+            :host[layout] {
+            @apply(--layout);
+            }
+            :host[layout][vertical] {
+            @apply(--layout-vertical);
+            }
+            [layout][end-justified] {
+            @apply(-?layout-end-justified);
+            }
+            .end_justified {
+            @apply(-?layout-end-justified);
+            }
+            [layout] {
+            @apply(--layout);
+            }
+            [layout][horizontal] {
+            @apply(--layout-horizontal);
+            }
+            [layout][center] {
+            @apply(--layout-center);
+            }
+            [layout][vertical] {
+            @apply(--layout-vertical);
+            }
+            [layout][flex] {
+            @apply(--layout-flex);
+            }
+            .flex {
+            @apply(--layout-flex);
+            }
+        </style>
+        <!--
+        <paper-dialog id="tile_properties_dialog" heading="{{dialogTitle}}" transition="paper-dialog-transition" auto-close-disabled="true" style="max-height:400px;min-height:300px;">
+            <div  align="center" style="padding-left:-20px;top:0px;right:0px;position:absolute;">
+                <paper-button id="buttonCancel" on-click="{{toggle}}" style="float:right">Close<iron-icon icon="close" style="width:18px;" ></iron-icon></paper-button>
+            </div>
+            <div layout vertical>
+
+                <div layout vertical>
+                    <div flex >
+                        <object-inspector selected="{{selected}}" filter="important" style="width:300px;float:right;"></object-inspector>
+                    </div>
+
+                </div>
+
+            </div>
+
+        </paper-dialog>
+        -->
+
+        <paper-dialog id="tile_properties_dialog" title="Properties"  transition="paper-dialog-transition"  style$="{{_dialogStyle(isDialogOpen)}}" >
+            <div horizontal center layout style="top:0px;width:100%;margin:0;padding:10px;">
+                <div style="font-size:x-large;">{{selected.localName}}:</div>
+                <div id="swapBtnFlexDiv2" flex class="flex">
+                    <div id="closeBtnDiv" style="width: 100%; text-align: right" >
+                        <paper-icon-button title="Close" icon="close" on-tap="close"  ></paper-icon-button>
+                    </div>
+                </div>
+            </div>
+            <div align="left" style="padding-left:20px;top:60px;bottom:60px;width:100%;">
+                <object-inspector on-bind-property="applyPropertyBinding" selected="{{selected}}" filter="important" style="width:300px;float:right;"></object-inspector>
+            </div>
+            <div  align="center" style="padding-left:80px;bottom:0px;width:100%;">
+                <paper-button id="buttonCancel" on-click="close" style="float:right">Close</paper-button>
+            </div>
+        </paper-dialog>
+
+    </template>
+
+    <script>
+        Polymer ({
+            is: 'ti-tile-properties',
+            hostAttributes: {
+            },
+            _dialogStyle: function(isDialogOpen) {
+                result = "position:fixed;bottom:75px;display:none;min-height:2px;max-height:2px;min-width:2px;max-width:2px;"; // get it out ouf the way of any of the tiles.
+                if (isDialogOpen){
+                    result = "margin-top:50px;display:block;position:fixed;bottom:75px;right:0px;max-height:80%;min-height:100px;overflow-y:auto;font-size:medium;border:1px solid lightgrey;background:white;"
+                }
+                return result;
+            },
+            properties: {
+                dialogTitle: {
+                    notify: true,
+                    type: String,
+                    value: "Properties"
+                },
+                isDialogOpen: {
+                    notify: true,
+                    type: Boolean,
+                    value: false
+                }
+            },
+            _closePropertyEditors: function(){
+                this.close();
+            },
+            closePropertyEditors: undefined,
+            created: function(){
+                this.closePropertyEditors = this._closePropertyEditors.bind(this);
+            },
+            toggle: function(transition) {
+                console.log("ti-tile-properties.toggle...")
+
+                var dialog = this.$.tile_properties_dialog;
+                this.isDialogOpen = !this.$.tile_properties_dialog.opened;
+                var _self = this;
+                if (this.isDialogOpen){
+                    console.log("ti-tile-properties isDialogOpen=true.");
+
+                    var designer = null;
+                    if ((window.parent)&&(window.parent.document)){
+                        designer = Polymer.dom(window.parent.document).querySelector('#designer');
+                    }
+                    if (designer) {
+                        designer.addEventListener('closePropertyEditors',this.closePropertyEditors);
+                    }
+
+                } else {
+                    var designer = null;
+                    if ((window.parent)&&(window.parent.document)){
+                        designer = Polymer.dom(window.parent.document).querySelector('#designer');
+                    }
+                    if (designer) {
+                        designer.removeEventListener('closePropertyEditors',this.closePropertyEditors);
+                    }
+                }
+                dialog.toggle(transition);
+                this.updateStyles();
+            },
+            open: function(){
+                console.log("ti-tile-properties.open...")
+                if (!this.$.tile_properties_dialog.opened){
+                    this.toggle();
+                }
+            },
+            close: function(){
+                console.log("ti-tile-properties.close...")
+                if (this.$.tile_properties_dialog.opened){
+                    this.toggle();
+                }
+            },
+            applyPropertyBinding: function (event, detail) {
+                var designer = null;
+                if ((window.parent)&&(window.parent.document)){
+                    designer = Polymer.dom(window.parent.document).querySelector('#designer');
+                }
+                if (designer) {
+                    designer.applyPropertyBinding(event, detail);
+                }
+            }
+
+        });
+    </script>
+
+</dom-module>

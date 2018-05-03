@@ -1,0 +1,144 @@
+<!--
+    Copyright (c) 2015, Texas Instruments Incorporated
+    All rights reserved.
+
+    Redistribution and use in source and binary forms, with or without
+    modification, are permitted provided that the following conditions
+    are met:
+
+    *   Redistributions of source code must retain the above copyright
+        notice, this list of conditions and the following disclaimer.
+        notice, this list of conditions and the following disclaimer in the
+        documentation and/or other materials provided with the distribution.
+    *   Neither the name of Texas Instruments Incorporated nor the names of
+        its contributors may be used to endorse or promote products derived
+        from this software without specific prior written permission.
+
+    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+    AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+    THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+    PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+    CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+    EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+    PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+    OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+    WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+    OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+    EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+-->
+<link rel="import" href="../polymer/polymer.html">
+<link rel="import" href="../ti-widget-common-behaviors/ti-widget-common-behaviors.html">
+<!--
+`ti-widget-tab` is an empty container widget to host child widgets.
+
+Example:
+
+    <ti-widget-tabcontainer>
+        <ti-widget-tab name="tab1"></ti-widget-tab>
+        <ti-widget-tab name="tab2"></ti-widget-tab>
+    </ti-widget-tabcontainer>
+
+See demo for a full working example of how to use this component.
+
+@group Ti Elements
+@element ti-widget-tab
+@demo demo.html
+@homepage ../../../ti-guicomposer-helpindex/demo.html
+-->
+<dom-module id='ti-widget-tab'  >
+
+    <template>
+    
+        <style>
+        	:host {
+        		position: absolute;
+        		left: 0px;
+        		right: 0px;
+        		top: 0px;
+        		bottom: 0px;
+        	}
+        </style>
+    
+        <content></content>
+    </template>
+    <script>
+        Polymer ({
+          is: 'ti-widget-tab',  
+         
+            behaviors: [TiWidgetBase, TiWidgetBaseText, TiBehaviorContainer],
+            properties: {
+                /**
+                 * Sets the display name for this tab.
+                 *
+                 * @attribute name
+                 * @type string
+                 */
+                name: {
+                  notify: true,
+                  type: String,
+                  value: "",
+                  observer: "tabChanged"
+                },
+                /**
+                 * Sets the icon for this tab.
+                 *
+                 * @attribute icon
+                 * @type string
+                 */
+                icon: {
+                    notify: true,
+                    type: String,
+                    value: "",
+                    observer: "tabChanged"
+                },
+                iconStyle: {
+                    notify: true,
+                    type: String,
+                    value: "width:25px;padding-right:5px;",
+                    observer: "tabChanged"
+                },
+                iconClickCallback: {
+                    notify: true,
+                    type: Function,
+                    value: null
+                },
+                tooltip: {
+                    notify: true,
+                    type: String,
+                    value: "",
+                    observer: "tabChanged"
+                },
+                index: {
+                    notify: true,
+                    type: Number,
+                    value: -1
+                }
+            },
+
+            getElement : function() 
+            {
+                return this;
+            },
+            attached : function()
+            {
+                this.tabChanged();
+            },
+            detached : function()
+            {
+                if (this._savedParentElement)
+                {
+                    this._savedParentElement.onChildTabItemsChanged();
+                }
+            },
+            tabChanged: function()
+            {
+                var parentElement = Polymer.dom(this).parentNode;
+                if (parentElement && parentElement.onChildTabItemsChanged)
+                {
+                    parentElement.onChildTabItemsChanged();
+                    this._savedParentElement = parentElement;
+                }
+            }
+        });
+    </script>
+</dom-module>

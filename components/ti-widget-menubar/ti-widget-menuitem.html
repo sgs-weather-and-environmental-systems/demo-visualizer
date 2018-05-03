@@ -1,0 +1,460 @@
+<!--
+    Copyright (c) 2015, Texas Instruments Incorporated
+    All rights reserved.
+
+    Redistribution and use in source and binary forms, with or without
+    modification, are permitted provided that the following conditions
+    are met:
+
+    *   Redistributions of source code must retain the above copyright
+    notice, this list of conditions and the following disclaimer.
+    notice, this list of conditions and the following disclaimer in the
+    documentation and/or other materials provided with the distribution.
+    *   Neither the name of Texas Instruments Incorporated nor the names of
+    its contributors may be used to endorse or promote products derived
+    from this software without specific prior written permission.
+
+    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+    AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+    THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+    PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+    CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+    EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+    PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+    OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+    WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+    OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+    EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+-->
+
+<link rel="import" href="../polymer/polymer.html">
+<link rel="import" href="../iron-icon/iron-icon.html">
+<link rel="import" href="../iron-icons/iron-icons.html">
+<link rel="import" href="../ti-widget-menubar/ti-widget-abstractmenu.html">
+<link rel="import" href="../iron-icons/av-icons.html">
+<!--
+`ti-widget-menuitem` a menu item to add to a menu bar.  Menu items may contain
+other menu items (sub-menus) or menu ations that perform individual operations.
+To construct sub menu items on the menu bar, it is often easier to construct the
+sub menu first, then drop it onto a menu when it is complete.  This makes it easier
+to select the sub menu and drop things onto it in the designer.
+
+Example:
+
+    <ti-widget-menubar>
+        <ti-widget-menuitem></ti-widget-menuitem>
+        <ti-widget-menuitem></ti-widget-menuitem>
+        <ti-widget-menuitem></ti-widget-menuitem>
+    </ti-widget-menubar>
+
+See ../demo.html for a full working example of how to use this component.
+
+@group TI Widget
+@element ti-widget-menuitem
+@homepage https://gitorious.design.ti.com/guicomposer-nw/ti-widget-menuitem
+-->
+<dom-module id="ti-widget-menuitem">
+    <template>
+        <style>
+            *{
+                Box-sizing: Border-box;
+            }
+            
+            :host {
+            	white-space: nowrap;
+            }
+            
+            .hoverMenu.rightSide {
+                border-radius: 0em .1em .1em .1em;
+                border-width: 1px 1px 1px 1px;
+            }
+
+            .hoverMenu.leftSide {
+                border-radius: .1em 0em .1em .1em;
+                border-width: 1px 1px 1px 1px;
+            }
+
+            .hoverMenu {
+                display: block;
+                z-index: 999;
+                position: absolute;
+                border-color: #118899;
+                border-style: solid;
+                padding: 1em;
+                margin:0px;
+                border-radius: 0 0 .1em .1em;
+                border-width: 0 1px 1px 1px;
+                
+ 
+				-webkit-box-shadow: 3px 3px 3px #98999B;
+				box-shadow: 3px 3px 3px #98999B;
+            }
+            div {
+                padding:0px;
+                margin:0px;
+                height:100%;
+            }
+
+            div:focus {
+                outline: 0;
+            }
+
+			:host(.subMenuItem) > #navContainer {
+	            padding:8px 16px 6px 16px;
+                height: 38px;
+	        }
+	        
+	        :host(:not(.subMenuItem)) > #navContainer {
+	        	float: left;
+	        }
+	        
+            #navContainer {
+                padding:10px 0;
+                vertical-align: middle;
+                position: relative;
+            }
+
+			:host(.subMenuItem) > #navContainer > .navBtn {
+                padding: 0px;
+                margin-right: 6px;
+			}
+			
+			:host(:not(.subMenuItem)) > #navContainer > .navBtn {
+                font-size:1.2em;
+                padding: 0 20px 0 20px;
+	            text-decoration:none; 
+			}
+			
+			:host(:not(.subMenuItem)) > #navContainer:not(.noIcon) > .navBtn {
+				padding: 0 20px 0 0;
+			}
+			
+            .navBtn {
+                background-repeat: no-repeat;
+                background-position: 10px center;
+                text-decoration:none;
+                white-space: nowrap;
+            }
+            
+            .smallIcon {
+            	width: 12px;
+            	height: 12px;
+            	right: 0px;
+            	top: 12px;
+            	position: absolute;
+            	display: none;
+            }
+            
+            .navIcon {
+                background-color:transparent;
+                border: none;
+            }
+            
+			:host(:not(.subMenuItem)) > #navContainer.noIcon > .navIcon {
+                display: none;
+			}
+			
+			:host(:not(.subMenuItem)) > #navContainer > .navIcon {
+                margin-left: 6px;
+			}
+			
+			.navIcon {
+				margin-right: 6px;
+			}
+            
+            :host(.subMenuItem) .smallIcon {
+            	display: inline;
+            }
+        </style>
+
+            <div id="navContainer" tabindex="-1" on-mouseenter="mouseEnterHandler" on-mouseleave="mouseExitHandler">
+                <iron-icon class="navIcon" icon$="{{iconName}}" src="{{iconPath}}" style="height: 24px;width: 24px;" ></iron-icon>
+                <template is="dom-if" restamp="true" if="{{name}}">
+
+                    <span class="navBtn" style="cursor:default">{{name}}</span>
+                </template>
+                <iron-icon class="smallIcon navIcon" icon="av:play-arrow"></iron-icon>
+                <ul class="hoverMenu" id="menuItem" style="display:none;padding:0;list-style-type:none;">
+                    <content></content>
+                </ul>
+            </div>
+    </template>
+    <script>
+
+        Polymer ({
+			is: 'ti-widget-menuitem',  
+
+            behaviors: [TiWidgetAbstractmenu],
+
+            _orientation : 'bottom', // can also be side (e.g. down along the left side of the canas)
+            properties: {
+                /**
+                 * Provides the label for this menu item
+                 *
+                 * @attribute name
+                 * @type string
+                 */
+                name: {
+                  notify: true,
+                  type: String,
+                  value: ""
+                },
+                
+                /**
+	             * Provides the optional icon to display next to the menu item.
+	             * This atribute should be use execlusively form the iconPath attribute.
+	             
+	             * @attribute iconName
+	             * @type string   
+	             */
+	            iconName: 
+	            {
+		            notify: true,
+		            type: String,
+		            value: ""
+	            },
+	            
+	            /**
+	             * Provides the optional icon to display next to the menu item.
+	             * This attribute should be use exclusively from the iconName attribute.
+	             *
+	             * @attribute iconPath
+	             * @type string
+	             */
+	            iconPath:
+	            {
+	            	notify: true,
+	            	type: String,
+	            	value: ""
+	            },
+            },
+            popupMenuOrientation : function(orientation)
+            {
+                if (orientation)
+                {
+                    this.$.navContainer.style.width = "";
+                    
+                    this._orientation = orientation;
+                    return this;
+                }
+                return _orientation;
+            },
+            _hoverMenuWidth : 24,
+            getMenuItem : function()
+            {
+                return this;
+            },
+            showMenu : function() 
+            {
+                this.$.navContainer.className = 'style-scope ti-widget-menuitem hovering' + (this.iconName ? '' : ' noIcon');
+                
+                if (!this._activeMenuManager || this._activeMenuManager.setActiveMenuItem(this))
+                {
+                    this.showFullMenu();
+                }
+            },
+            showFullMenu : function(displayFullMenu)
+            {
+                this._showing = true;
+                
+                var children = Polymer.dom(this).children;
+            	for(var i = children.length; i-- > 0; )
+            	{
+            		var child = children[i];
+            		if (child.onShowParentMenu)
+            		{
+            			child.onShowParentMenu();
+            		}
+            	}
+            	
+                if (this._orientation === 'bottom')
+                {
+                    this.$.menuItem.style.top = this.$.navContainer.offsetTop + this.$.navContainer.clientHeight + 'px';
+                    this.$.menuItem.style.right = "";
+                    this.$.menuItem.style.left = "";
+
+                    this.$.navContainer.style.width = "";
+                    this.$.menuItem.className = "style-scope ti-widget-menuitem hoverMenu";
+
+                    this.$.menuItem.style.display = "";
+
+                    // test if menu item is out of bounds
+                    var rect = this.$.menuItem.getBoundingClientRect();
+                    var screenWidth = window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth;
+                    if (rect.right > screenWidth)
+                    {
+                        this.$.menuItem.style.right = '0px';
+                    }
+                }
+                else if (this._orientation === 'side')
+                {
+                    this.$.menuItem.style.top = '0px';                    
+                   	this.$.menuItem.style.left = (this.offsetWidth === 0 ? this.offsetParent.clientWidth : this.offsetWidth) + 'px';
+                    this.$.menuItem.style.right = "";
+                    this.$.navContainer.style.width = this.$.menuItem.style.left;
+                    this.$.menuItem.className = "style-scope ti-widget-menuitem hoverMenu rightSide";
+                    this.$.menuItem.style.display = "";
+
+                    // test if menu item is out of bounds
+                    var rect = this.$.menuItem.getBoundingClientRect();
+                    this._hoverMenuWidth = rect.right - rect.left;
+                    var screenWidth = window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth;
+                    if (rect.right > screenWidth)
+                    {
+                        this.$.menuItem.style.right = this.$.navContainer.clientWidth + 'px';
+                        this.$.menuItem.style.left = "";
+                        this.$.menuItem.className = "style-scope ti-widget-menuitem hoverMenu leftSide";
+
+                    }
+                }
+                this.updateStyles();
+            },
+            hideMenu : function() 
+            {
+                this.$.navContainer.className = 'style-scope ti-widget-menuitem' + (this.iconName ? '' : ' noIcon');
+           	    this.hideFullMenu();
+            },
+            hideFullMenu: function()
+            {
+                this.$.menuItem.style.display = "none";
+                this.$.menuItem.style.left = "";
+                this.$.menuItem.style.right = "";
+                this.$.menuItem.style.top = "";
+                this.$.menuItem.className = "style-scope ti-widget-menuitem hoverMenu";
+
+                this.setActiveMenuItem(null);
+                this._showing = false;
+            },
+            getMenuWidth : function()
+            {
+                var menuWidth = this.$.navContainer.scrollWidth;
+                if (menuWidth <= 0 && this._lastMenuWidth)
+                {
+                    // scrollWidth can be zero when menus are moved between different content sections.
+                    menuWidth = this._lastMenuWidth;
+                }
+                this._lastMenuWidth = menuWidth;
+                return menuWidth+1;
+            },
+            onClickHandler: function(event)
+            {
+                event.stopPropagation();
+                if (this._activeMenuManager) 
+                {
+                    this._activeMenuManager.onActiveMenuClicked(!this._showing);
+                }
+            	if (this._showing) 
+            	{
+            		if (this.className.indexOf('subMenuItem') < 0 && this.className.indexOf('moreMenuItem') < 0)
+            		{
+             		if (this._hovering)
+             		{
+                         this.hideFullMenu();
+             		}
+             		else
+             		{
+                         this.hideMenu();
+             		}
+            		}
+            	}
+            	else
+            	{
+            		this.showMenu();
+            	}
+            },
+            mouseEnterHandler: function() 
+            {
+           		this.showMenu();
+                this._hovering = true;
+            },
+            mouseExitHandler: function()
+            {
+                this._hovering = false;
+            	if (!this._activeMenuManager || !this._showing || this._activeMenuManager.openOnHover)
+            	{
+            		this.hideMenu();
+            	}
+            },
+            setActiveMenuItem: function(activeMenuItem)
+            {
+                if (this._activeMenuItem && this._activeMenuItem !== activeMenuItem)
+                {
+                    this._activeMenuItem.hideMenu();
+                }
+                this._activeMenuItem = activeMenuItem;
+                return true;
+            },
+            onBlurHandler: function()
+            {
+                if (this._allowBlur)
+                {
+                    this.setActiveMenuItem(null);
+                    if (this._activeMenuManager.canHideMenu && this._activeMenuManager.canHideMenu())
+                    {
+                    	this.hideMenu();
+                    }
+                }
+            },
+            onActiveMenuClicked: function() 
+            {
+            	this.$.navContainer.focus();
+                this._allowBlur = false;
+                if (this._activeMenuManager) 
+                {
+                    this._activeMenuManager.onActiveMenuClicked(this._showing);
+                }
+            },
+            blur: function()
+            {
+                if (this._activeMenuManager && this._activeMenuManager.blur) 
+                {
+            		this._activeMenuManager.blur();
+                }
+            },
+            ready: function() 
+            {
+            	var that = this;
+            	
+            	this.hideMenu();
+            	
+                // add lose of focus listener to more menu item to hide the popup menu if showing.
+                this.$.navContainer.addEventListener("click", function(event) 
+                {
+                	that.onClickHandler(event);
+                });
+                
+                // add lose of focus listener to more menu item to hide the popup menu if showing.
+                this.$.navContainer.addEventListener("blur", function()
+                {
+                    that._allowBlur = true;
+                    setTimeout(function() 
+                    {
+                    	that.onBlurHandler();
+                    }, 200); 
+                }, true); 
+
+                this._activeMenuManager.that = this;
+            },
+            _activeMenuManager: 
+            {
+                setActiveMenuItem: function(activeMenuItem)
+                {
+                    return this._showFullMenus;
+                },
+                onActiveMenuClicked: function(flag) 
+                {
+                	this.that._allowBlur = false;
+                    this._showFullMenus = flag;
+                },
+                canHideMenu: function()
+                {
+                    this._showFullMenus = false;
+                    return true;
+                }
+            }
+        });
+
+    </script>
+    
+
+</dom-module>

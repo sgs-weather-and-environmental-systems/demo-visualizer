@@ -1,0 +1,567 @@
+<!--
+    Copyright (c) 2015, Texas Instruments Incorporated
+    All rights reserved.
+
+    Redistribution and use in source and binary forms, with or without
+    modification, are permitted provided that the following conditions
+    are met:
+
+    *   Redistributions of source code must retain the above copyright
+    notice, this list of conditions and the following disclaimer.
+    notice, this list of conditions and the following disclaimer in the
+    documentation and/or other materials provided with the distribution.
+    *   Neither the name of Texas Instruments Incorporated nor the names of
+    its contributors may be used to endorse or promote products derived
+    from this software without specific prior written permission.
+
+    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+    AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+    THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+    PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+    CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+    EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+    PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+    OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+    WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+    OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+    EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+-->
+
+<link rel="import" href="../polymer/polymer.html">
+
+<link rel="import" href="../ti-core-databind/ti-core-databind.html">
+<link rel="import" href="../ti-service-serialio/ti-service-serialio.html">
+<link rel="import" href="../ti-service-programloader/ti-service-programloader.html">
+<link rel="import" href="../ti-core-databind/ti-core-model-base-behavior.html">
+<script type="text/javascript" src="src/internal/serialPortModel.js"></script>
+<!--
+`ti-serialio-model` adds the serial port model for databinding to a uart or usb stream of data.
+    -
+Example:
+
+    <ti-serialio-model></ti-serialio-model>
+
+See ../demo/ti-serialio-model/demo.html for a full working example of how to use this component.
+
+@group Ti Elements
+@element ti-serialio-model
+@homepage elements/ti-guicomposer-helpindex/demo.html
+@demo demo.html
+-->
+<dom-module id='ti-serialio-model'>
+<template>
+    <style>
+        :host {
+            display: none;
+    }
+    </style>
+
+    <ti-service-serialio id="serialIO" serial-model-output-hdlr="{{serialPortDataHdlr}}" device-name="[[deviceName]]" backplane="{{backplane}}" 
+    					default-baud-rate="{{defaultBaudRate}}" model-id="[[id]]" wait-for-data-timeout-in-ms=[[waitForDataTimeoutInMs]]></ti-service-serialio>
+    <ti-service-programloader id="programLoader" device-name="[[deviceName]]" connection-id="[[connectionId]]" model-id="[[id]]" 
+    					target-program="[[targetProgram]]" target-program-verify-image="[[targetProgramVerifyImage]]" target-folder="[[targetFolder]]"
+    					is-program-download-btn-visible="{{canFlashDevice}}" backplane="{{backplane}}"></ti-service-programloader>
+</template>
+<script>
+    
+(function() {
+    
+    Polymer ({
+        is: 'ti-serialio-model',  
+     
+        behaviors: [TICoreModelBaseBehavior],
+        
+        /**
+         * Fired when the visibility of one of the buttons in the application that is associated
+         * with ti-service-programloader needs to be changed
+         *
+         * @event serialioModelReceivingData
+         */
+        
+        properties: {
+            /** the name of the target device for serial communications with the target.  This is only needed to auto program the 
+            * the target device with an image.
+            *
+            * @attribute deviceName
+            * @type String
+            */
+        	deviceName: {
+        	    type: String,
+        	    value: undefined,
+                observer: "_deviceNameChanged"
+        	},
+            /**
+             * specifies the ISA family for use during the COM port auto-selection.
+             * Valid values are MSP432, CC2650 and Other
+             *
+             * @attribute deviceFamily
+             * @type String
+             * @default "Other"
+             */
+            deviceFamily: {
+                type: String,
+                value: "Other",
+                observer: "_deviceFamilyChanged"
+            },
+            /** the name of the connection for serial communications with the target.  This is only needed to auto program the 
+            * the target device with an image.
+            *
+            * @attribute connectionId
+            * @type String
+            */
+        	connectionId: {
+        	    type: String,
+        	    value: undefined
+        	},
+        	
+            /** the serial port baud rate to use by default for serial communications with the target
+             *
+             * @attribute defaultBaudRAte
+             * @type Number
+             * @default 9600
+             */
+            defaultBaudRate: {
+                notify: true,
+                type: Number,
+                value: 9600
+            },
+            /**
+             * Flag to indicate if the program should always be loaded automatically.
+             * @type string
+             */
+            autoLoadProgram: {
+                notify: true,
+                type: Boolean,
+                value: false
+            },
+            
+            /**
+             * The relative path to the program to auto load onto the target device before serial communications can begin.
+             * @attribute targetProgram
+             * @type string
+             */
+            targetProgram: {
+                type: String,
+                value: undefined
+            },
+            /**
+             * The name of the program image to use to verify the program loaded into the target device.
+             * If specified, this will be used to determine whether or not the targetProgram is to be programmed
+             * into the device or not.  Stored in the same targetFolder as the targetProgram (See 'targetFolder')
+             * @attribute targetProgramVerifyImage
+             * @type string
+             */
+            targetProgramVerifyImage: {
+                type: String,
+                value: undefined
+            },
+            /**
+             * The relative or absolute path to the folder where the target program is located.
+             * this attribute is optional, and if omitted, the default folder is 'target/'.
+             * @attribute targetProgram
+             * @type string
+             */
+            targetFolder: {
+                type: String,
+                value: undefined
+            },
+            /**
+             * the protocol used for communicating with the target device ('json', 'monitor', 'custom')
+             *
+             * @attribute protocol
+             * @type string
+             */
+            protocol: {
+                type: String,
+                value: undefined
+            },
+            /**
+             * the data format used when encoding information to be sent to the target ('json', 'custom' or a user-defined name)
+             *
+             * @attribute txPacketDataFormat
+             * @type string
+             * @default 'json'
+             */
+            txPacketDataFormat: {
+                type: String,
+                value: 'json'
+            },
+            /**
+             * the data format used for decoding information received from the target ('json', 'custom' or a user-defined name)
+             *
+             * @attribute rxPacketDataFormat
+             * @type string
+             * @default 'json'
+             */
+            rxPacketDataFormat: {
+                type: String,
+                value: 'json'
+            },
+            /**
+             * if true, the target executable can be programmed into the device's flash memory
+             *
+             * @attribute canFlashDevice
+             * @type boolean
+             */
+            canFlashDevice: {
+                type: Boolean,
+                value: undefined,
+                notify: true
+            },
+            /**
+             * Timeout period in ms to wait for data to be sent by the target before automatically
+             * closing the serial port and re-opening the serial port to retry establishing communication
+             * with the target.
+             * - Set this to 0 in situations where the target is not continuously
+             * sending data to the GUI (e.g. monitor)
+             * - set this to a value > 0 (e.g. 4000) to specify the timeout period to wait before trying
+             * to reestablish the serial port connection for situations where the target is continuously
+             * sending data to the GUI but serial communications is not robust (e.g. when working with the MSP-EXP430G2 board)
+             *
+             * @attribute waitForDataTimeoutInMs
+             * @type number
+             * @default 0
+             */
+            waitForDataTimeoutInMs: {
+                type: Number,
+                value: 0,
+                notify: true
+            }
+        },
+ 	    /* bc: initializing serialPortDataHdlr too early can cause it to not be picked up properly 
+		 * by the ti-service-serialio serialModelOutputHdlr change monitor  
+         * serialPortDataHdlr: gc.databind.SerialPortModel.serialPortRecievedHandler, */
+        serialPortDataHdlr: undefined,
+        ready: function()
+        {
+        	this.async(this.domReady, 1);
+        },
+        domReady: function() 
+        {
+            this.serialPortModel = new gc.databind.SerialPortModel(this.id, this.$.serialIO);
+            gc.databind.registry.registerModel(this.serialPortModel, true, 'uart');
+
+            this.serialPortDataHdlr = this.serialPortModel.serialPortRecievedHandler;
+            this._programLoaded = !this.autoLoadProgram; 
+
+            var that = this;
+            
+            this.loadSettingsFromProjectDatabase().then(function(modelData) 
+            {
+                if (gc.designer && !(window.global && global.document && global.document.gc && global.document.gc.designer))
+                {
+	            	that._bindingProperties = (modelData && modelData.bindings) || {};
+	            	that._originalProperties = (modelData && modelData.bindings) || {};
+                }
+                that._ccxmlText = (modelData && modelData.ccxmlText) || {};
+            });
+                
+            if (gc.designer && !(window.global && global.document && global.document.gc && global.document.gc.designer))
+            {
+                this.loadRecommendedComPort(this.getRecommendedComPortKeyPrefix());
+                
+                this.onTargetConnectChanged.onValueChanged = this.onTargetConnectChanged._onValueChanged.bind(this);
+                this.onTargetDataReceived.onValueChanged = this.onTargetDataReceived._onValueChanged.bind(this);
+                
+                gc.databind.registry.getBinding(that.id + '.$target_connected').addChangedListener(this.onTargetConnectChanged);
+                gc.databind.registry.getBinding(that.id + '.$rawData').addChangedListener(this.onTargetDataReceived);
+            }
+            else 
+        	{
+                gc.connectionManager.autoConnect();
+        	}
+        	
+            that.$.serialIO.addEventListener('serialPortsReadyToBeOpened', function() 
+            {
+            	that.onSerialPortListChanged();
+            	
+            	// if someone reconnects the backplane while in connected state, then open the serial port automatically.
+            	if (!that._waitForTargetReady)
+            	{
+            	    that.$.serialIO.updateStateMachine('userOpenSerialPort');
+            	}
+            });
+            
+            that.$.serialIO.addEventListener('serialPortOpen', function() 
+            {
+                if (that.serialPortDataHdlr !== that.$.serialIO.serialModelOutputHdlr) {
+                    console.error("Something changed the serialPortDataHdlr!  Reassigning...");
+                    that.$.serialIO.serialModelOutputHdlr = that.serialPortDataHdlr;
+                }
+                console.log("ti-serialio-model: serialPortOpen, serialPortDataHdlr assigned...")
+                
+	            var backplane = that.$.serialIO.backplane;
+                that.addConsoleProgress('waiting for data ...', 'Please ensure your hardware is actually transmitting data on the same serial port.');
+	            that.serialPortModel.connect(function() 
+	            {
+	                that.setConnectedState(true);
+	                that.fire('serialioModelReceivingData');
+	                that.onConnected();
+	            }, that.protocol || that.rxPacketDataFormat, that.protocol || that.txPacketDataFormat);
+            });
+            
+            that.$.serialIO.addEventListener('currentStateUpdated', function() 
+            {
+                if (that.$.serialIO.currentState.name.indexOf('running') !== 0 &&
+                    that.$.serialIO.currentState.name.indexOf('findingSerialPorts') !== 0 &&
+                    that.$.serialIO.currentState.name.indexOf('openSerialPort') !== 0)
+                {
+                	that.serialPortModel.disconnect();
+                	that.setConnectedState(false);
+                	
+                	if (that.status === 'disconnecting' && 
+                	    (that.$.serialIO.currentState.name.indexOf('serialPortReady') == 0 ||
+                	    that.$.serialIO.currentState.name.indexOf('disconnected') === 0)) 
+                	{
+                	    that.onDisconnected();
+                	}
+                }
+            });
+            
+            that.$.serialIO.addEventListener('serialportchangedbyuser', function(event) 
+            {
+                that.setConnectedState(false);
+                // persist the user-selected comPort and baudRate for use next time.
+                that.setRecommendedComPort(event.detail.comName, event.detail.baudRate);
+            });
+        },
+        getAdditionalProperties : function ( prefix )
+        {
+        	prefix = prefix || "";
+        	var pos = prefix.lastIndexOf('.');
+        	var start;
+        	if (pos > 0)
+        	{
+        		start = prefix.substring(pos + 1);
+        		prefix = prefix.substring(0, pos);
+        	}
+        	else
+        	{
+        		start = prefix;
+        		prefix = "";
+        	}
+        	var result = [];
+            if (this._bindingProperties)
+            {
+                result = this._bindingProperties[prefix] || [];
+                if (result && start.length > 0)
+                {
+                	var filteredResult = [];
+                	for(var i = result.length; i--> 0; )
+                	{
+                		if (result[i].indexOf(start) === 0)
+                		{
+                		    filteredResult.push(result[i]);
+                		}
+                	}
+                	result = filteredResult;
+                }
+            }
+            return result;
+        },
+        onSerialPortListChanged : function() 
+        {
+            if (!this.$) return;
+
+            var serialIO = this.$.serialIO;
+            var result = this.pickRecommendedComPort(serialIO.serialPorts);
+            serialIO.selectedSerialPort = result.selectedSerialPort || serialIO.selectedSerialPort;
+            serialIO.selectedBaudRate = result.selectedBaudRate || serialIO.selectedBaudRate;
+        },
+        generateProjectMetadata : function(exportDirectory, arrayOfLines)
+        {
+            var bindings = gc.databind.registry.parseBindingsFromGist(this.id, arrayOfLines, this.id || 'uart');
+            gc.databind.registry.saveBindingsToFile('index.json', bindings);
+        },
+        flashDevice: function()
+        {
+            return Q.promise(function(resolve) 
+                {
+                    var sequencer = gc.connectionManager.sequencer;
+                    
+        	        sequencer.when('downloadProgram').then(function() 
+        	        {
+                        var programLoader = this.$.programLoader;
+                        
+        		        return this.waitForEvent(programLoader, 'programDownloadUIVisibilityChanged', 'isProgramDownloadBtnVisible', true, 
+        		            'isReplugNoticeVisible', true).then(programLoader.doProgramTargetDevice.bind(programLoader, this.addConsoleMessage.bind(this))).fail(function(reason) 
+                        {
+                            this.onDisconnected(reason);
+        					throw reason;
+                        }.bind(this));
+        	        }.bind(this)).then(resolve);
+        	        
+       		        sequencer.after('downloadProgram').schedule(
+       		            'reconnect', gc.connectionManager.reconnectBackplane.bind(gc.connectionManager));
+                }.bind(this));
+        },
+        // valid values for device family are MSP432, CC2650 and Other
+        _deviceFamilyChanged: function(newValue, oldValue){
+            if ((this.deviceFamily) && (!this.deviceName)){
+                var lcDeviceFamily = this.deviceFamily.toLowerCase();
+                if (lcDeviceFamily.indexOf("432") >= 0) {
+                    this.deviceName = "MSP432P401R";
+                } else if (lcDeviceFamily.indexOf("cc") >= 0) {
+                    this.deviceName = "CC2650F128";
+                }
+            }
+        },
+        _deviceNameChanged: function(newValue, oldValue){
+            if (this.deviceName) {
+                var lcDeviceName = this.deviceName.toLowerCase();
+                if (lcDeviceName.indexOf("432") >= 0) {
+                    this.deviceFamily = "MSP432";
+                } else if (lcDeviceName.indexOf("cc2650") >= 0) {
+                    this.deviceFamily = "CC2650";
+                }
+            } else {
+                this.deviceFamily = "Other";
+            }
+        },
+        attached: function()
+        {
+			this.$.serialIO.registerSerialPortInstance(this.id);
+			
+			this.async(function()
+			{
+               this.fire('modelReadyEvent',this);
+            }.bind(this),1);
+        },
+        detached: function() 
+        {
+            if (gc.designer && !(window.global && global.document && global.document.gc && global.document.gc.designer))
+            {
+                gc.databind.registry.getBinding(this.id + '.$target_connected').removeChangedListener(this.onTargetConnectChanged);
+                gc.databind.registry.getBinding(this.id + '.$rawData').removeChangedListener(this.onTargetDataReceived)
+            }
+            
+			this.$.serialIO.unregisterSerialPortInstance[this.id];
+        },
+        clearSymbolProperties: function()
+        {
+        	this._bindingProperties = undefined;
+        },
+        onTargetConnectChanged: 
+        {
+            _onValueChanged: function(wasConnected,isConnected )
+            {
+                if (isConnected) 
+                {
+                	this._bindingPropertiesChanged = false;
+                    this.clearSymbolProperties();
+                }
+            }	
+        },
+        onTargetDataReceived: 
+        {
+            _onValueChanged: function(oldData,newData)
+            {
+            	var changed = this.addSymbolProperties("", newData);
+            	this._bindingPropertiesChanged = this._bindingPropertiesChanged || changed;
+            	
+            	this.addConsoleDataReceived(newData);       
+            }
+        },
+        addSymbolProperties: function(prefix, rawData) 
+        {
+        	this._bindingProperties = this._bindingProperties || {}
+
+        	prefix = prefix || "";
+            var list = this._bindingProperties[prefix] = this._bindingProperties[prefix] || [];
+        	var changed = false;
+
+        	for(var data in rawData)
+        	{
+        		if (rawData.hasOwnProperty(data))
+        		{
+        			var found = false
+        			for(var i = list.length; i-- > 0; )
+        			{
+        				if (list[i] === data)
+        				{
+        					found = true;
+        					break;
+        				}
+        			}
+        			if (!found) 
+        			{
+        				list.push(data);
+        				changed = true;
+        			}
+        			
+        			var child = rawData[data];
+        			if (typeof child === 'object')
+        			{
+        				var childPrefix = prefix.length > 0 ? prefix + '.' + data : data;
+        				var result = this.addSymbolProperties(childPrefix, child);
+        				changed = changed || result;
+        			}
+        		}
+        	}
+        	return changed;
+        },
+        setCustomCodec: function(customCodec)
+        {
+            this._customCodec = customCodec;
+        },
+        sendValue: function(value) 
+        {
+        	this.serialPortModel && this.serialPortModel.sendValue(value);    
+        },
+        _waitForTargetReady: true,
+        startConnecting: function(selectedDevice, preventClientAgentInstallCallback)
+        {
+		    this.startBackplane(selectedDevice || this.$.serialIO.selectedDevice, preventClientAgentInstallCallback);
+		    
+		    if (this.autoLoadProgram)
+		    {
+		        this.flashDevice();
+		    }
+		    gc.connectionManager.sequencer.when('targetReady').then(function() 
+		    {
+		        if (this.shouldAutoConnect())
+		        {
+		            this._waitForTargetReady = false;
+			        this.waitForEvent(this.$.serialIO, 'serialPortUIVisibilityChanged', 'isSerialPortUIVisible', true).then(
+			            	this.$.serialIO.updateStateMachine.bind(this.$.serialIO, 'userOpenSerialPort'));
+		        }
+		    }.bind(this));
+        },
+        startDisconnecting: function()
+        {
+            this._waitForTargetReady = true;
+            this.$.serialIO.updateStateMachine('userCloseSerialPort');
+            
+            this.stopBackplane();
+            
+            this.onDisconnected();
+        },
+        changeSerialPort: function(comPort, baudRate)
+        {
+			this.$ && this.$.serialIO.changeSerialPort(comPort, baudRate || this.defaultBaudRate);
+        },
+        saveSettingsToProjectDatabase: function(modelObjData, projectName)
+        {
+            modelObjData.bindings = this._bindingPropertiesChanged ? this._bindingProperties : this._originalProperties;
+			modelObjData.ccxmlText = {};
+            
+            this.saveRecommendedComPort(this.getRecommendedComPortKeyPrefix(projectName));
+            
+            if (this.deviceName && this.connectionId && this.targetProgram)
+            {
+                return this.backplane.generateCcxmlFile(this.deviceName, this.connectionId).then(function(jtagCcxml) 
+                {
+					modelObjData.ccxmlText.jtag = jtagCcxml;
+				});
+            }
+        },
+        getRecommendedComPortKeyPrefix: function(projectName)
+        {
+            projectName = projectName || gc.fileCache.getProjectName();
+            return projectName + '_' + this.id + '_';
+        }
+    });
+}());
+</script>
+    
+</dom-module>

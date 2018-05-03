@@ -1,0 +1,523 @@
+<!--
+Copyright 2013 The Polymer Authors. All rights reserved.
+Use of this source code is governed by a BSD-style
+license that can be found in the LICENSE file.
+-->
+<link rel="import" href="../polymer/polymer.html">
+<link rel="import" href="../ti-core-assets/ti-core-assets.html">
+
+<dom-module id='x-meta'  >
+    <script>
+        
+        if (!window._metaCategories) {
+            window._metaCategories = [];
+            window._metaMap = {};
+            window._metaPathMap = {};
+            window._metaList = [];
+            window._prevNumCategories = 0;
+        }
+        Polymer ({
+            is: 'x-meta',
+            importsLoaded: false,
+            tag: "",
+            setMeta: function(_categories, _list, _pathMap, _map) {
+                /*   this.splice('categories',0,this.categories.length);
+                 for (var i=0; i < _categories.length; i++){
+                 this.push('categories',_categories[i]);
+                 }
+                 window._metaCategories = this.categories;
+
+                 this.splice('list',0,this.list.length);
+                 for (var i=0; i < _list.length; i++){
+                 this.push('list',_list[i]);
+                 }
+                 window._metaCategories = this.list;
+
+                 this.pathMap = _pathMap;
+                 window._metaPathMap = this.pathMap;
+
+                 this.map = _map;
+                 window._metaMap = this.map;
+                 */
+            },
+            properties: {
+                // shared data
+                list: {
+                    type: Array,
+                    value: window._metaList,
+                    notify: true
+                },
+                map: {
+                    type: Object,
+                    value: window._metaMap,
+                    notify: true
+                },
+                categories: {
+                    type: Array,
+                    value: window._metaCategories,
+                    notify: true
+                },
+                pathMap: {
+                    type: Object,
+                    value: window._metaPathMap,
+                    notify: true
+                },
+                // instance properties:
+                label: {
+                    notify: true,
+                    type:String,
+                    value: ''
+                },
+                alwaysPrepare: {
+                    type: Boolean,
+                    value: true,
+                    notify: true
+                },
+                isContainer: {
+                    type: Boolean,
+                    value: false,
+                    notify: true
+                },
+                isHidden: {
+                    type: Boolean,
+                    value: false,
+                    notify: true
+                },
+                metaProperties: {
+                    type: Object,
+                    value: undefined,
+                    notify: true
+                },
+                shouldPrepend: {
+                    type: Boolean,
+                    value: false,
+                    notify: true
+                },
+                hideSubtree: {
+                    type: Boolean,
+                    value: false,
+                    notify: true
+                },
+                isEditor: {
+                    type: Boolean,
+                    value: false,
+                    notify: true
+                },
+                category: {
+                    type: String,
+                    value: '',
+                    notify: true
+                },
+                numCategories: {
+                    type: Number,
+                    value: 0,
+                    notify: true
+                }
+            },
+            behaviors: [ Polymer.Templatizer],
+            ready: function() {
+                try {
+                    if (this.id && this.id !== 'meta') {
+                        this.resolveCategory();
+                        if (this.category === 'Custom') {
+                            console.log("x-meta. importing custom component:"+this.id);
+                        }
+                        this.resolveImportPath();
+                        this.numCategories = window._metaCategories.length;
+                        this.register(this);
+                    }
+                    this.updateMetaProperties();
+                }
+                catch(ex){
+                    console.log("x-meta: "+this.id+": exception in ready: ex="+ex.toString());
+                }
+                // Notify the designer palette that the list of components has been updated.
+                var designer = window.parent.document.querySelector('#designer');
+                if ((designer) && (designer.$)) {
+                    var palette = designer.$.palette;
+                    palette.updateCategories(window);
+                }
+            },
+            enteredView: function() {
+                this.updateMetaProperties();
+            },
+            resolveAppImportPath: function(){
+                this.importPath = (this.ownerDocument.baseURI || '');
+                if (this.importPath.length > 0) {
+                    this.importPath = this.importPath.substring(0,this.importPath.indexOf('gc'));
+
+                }
+                this.importPath += gc.designer.project.folderName+'/app/';
+            },
+            resolveImportPath: function() {
+                this.importPath = (this.ownerDocument.baseURI || '').split('/').slice(0,-1).join('/');
+            },
+
+            resolveCategory: function() {
+                this.category =  this.getAttribute('group');
+                if (!this.category) {
+                    this.category = 'Other Components';
+                }
+                // add to path category collation as needed
+                var pm = window._metaPathMap[this.category];
+                if (!pm) {
+                    pm = window._metaPathMap[this.category] = {
+                        name: this.category.split('/').pop(),
+                        list: []
+                    }
+                    // add to category list
+                    window._metaCategories.push(pm);
+                    // sort
+                    window._metaCategories.sort(function(a, b) {
+                        var aa = a.name.toLowerCase(), bb = b.name.toLowerCase();
+                        if (aa < bb) {
+                            return aa === 'other components' ? 1 : -1;
+                        } else if (aa > bb) {
+                            return bb === 'other components' ? -1 : 1;
+                        }
+                        return 0;
+                    });
+                }
+            },
+
+            register: function(meta) {
+                if (meta.id) {
+                    // add to id map
+                    window._metaMap[meta.id] = meta;
+                    // pre|append to id list
+                    if (meta.shouldPrepend) {
+                        window._metaList.unshift(meta);
+                    } else {
+                        window._metaList.push(meta);
+                    }
+                    //
+                    // function for case-insensitive sort by (label || id)
+                    var sortfn = function(a, b) {
+                        var aa = (a.label || a.id).toLowerCase(), bb = (b.label || b.id).toLowerCase();
+                        return aa < bb ? -1 : (aa > bb ? 1 : 0);
+                    };
+                    // sort the master list
+                    window._metaList.sort(sortfn);
+                    //
+                    // locate category collation
+                    var catlist = window._metaPathMap[this.category].list;
+                    // add to collation
+                    catlist.push(meta);
+                    // sort collation
+                    catlist.sort(sortfn);
+                }
+            },
+
+            unregister: function(meta, id) {
+                if (id) {
+                    delete _map[id || meta.id];
+                    var i = window._metaList.indexOf(meta);
+                    if (i >= 0) {
+                        window._metaList.splice(i, 1);
+                    }
+                }
+            },
+
+            byId: function(id) {
+                var result = null;
+                if (id) {
+                    result = window._metaMap[id];
+                }
+                return result;
+            },
+
+            _queryProperties: function(node, props) {
+            	var ps = node.querySelectorAll('property');
+                ps && Array.prototype.forEach.call(ps, function(p) {
+                    var o = {};
+                    Array.prototype.forEach.call(p.attributes, function(a) {
+                        var v = a.value;
+                        v = v.indexOf(',') > 0 ? v.split(',') : v;
+                        // handle boolean attribute
+                        if (v === '') {
+                            v = true;
+                        }
+                        o[a.name] = v;
+                    });
+                    props[o.name] = o;
+                });
+            },
+            
+            updateMetaProperties: function() {
+                var props = {};
+                /* query inherited properties - must be executed first so that element properties can override the behavior properties */
+                var bs = this.querySelectorAll('inherit');
+                bs && Array.prototype.forEach.call(bs, function(b) {
+                	window._metaList && Array.prototype.forEach.call(window._metaList, function(m) {
+                		if (m.attributes.id.value == b.attributes.id.value) {
+                			this._queryProperties(m, props)		
+                		}
+                	}.bind(this));
+                	                
+                }.bind(this));
+
+                /* query element properties and override any properties that already exist in the inherited properties */
+                this._queryProperties(this, props);
+               	this.metaProperties = props;
+
+                // Notify the designer palette that the list of components has been updated.
+                var designer = window.parent.document.querySelector('#designer');
+                if ((designer) && (designer.$)) {
+     	            if (designer.metadataDocQ) {
+	                    designer.metadataDocQ.then(function(docs) {
+	                    	this._updateMetaDoc(docs, this.id, props);
+	                    }.bind(this));
+     	            }
+                }
+            },
+            
+            _updateMetaDoc: function(docs, id, metaProperties) { 	
+            	if (docs) {
+            		var doc = docs[id];	
+            		if (doc) {
+            			for (var m in metaProperties) {
+            				var propDoc = doc[m];
+            				if (propDoc) {
+            					metaProperties[m].title = propDoc.desc;
+            				}
+            			}
+            		}
+            	}
+            },
+
+            // TODO(sjmiles): functions below here don't necessarily belong
+            // in this object
+            get archetype() {
+                if (!this._archetype) {
+                    this._archetype = Polymer.dom(this).querySelector('template');
+                    if (this._archetype) {
+                        // Polymer.urlResolver.resolveTemplate(this._archetype);
+                        this.resolveTemplate(this._archetype);
+                    }
+                }
+                return this._archetype;
+            },
+
+            createElement: function() {
+                var node = null;
+                if (!this.importsLoaded) {
+                    this.loadImports();
+                }
+                if (this.archetype) {
+                    // 0.5: var node = this.archetype.createInstance().querySelector('*');
+
+                    // 1.2: see http://t-code.pl/blog/2015/08/polymer-templatizer/
+                    this.templatize(this.archetype);
+                    var templateInst = this.stamp({});
+                    node = templateInst.root.firstElementChild;
+                } else {
+                    node = document.createElement(this.id);
+                }
+                this.ensureMeta(node);
+                return node;
+            },
+
+            ensureMeta: function(node) {
+                if (node.localName) {
+                    node._designMeta = node._designMeta ||
+                            this.byId(node.getAttribute("designMeta")) ||
+                            this.byId(node.getAttribute("is")) || this.byId(node.localName);
+                }
+                Array.prototype.forEach.call(node.children, function(n) {
+                    this.ensureMeta(n);
+                }, this);
+            },
+
+            getImports: function() {
+                var t = Polymer.dom(this).querySelector('#imports');
+                if (t && !t._resolved) {
+                    t._resolved = true;
+                    // resolve urls in template.
+                    //Polymer.urlResolver.resolveTemplate(t);
+                    this.resolveTemplate(t);
+                }
+                return t;
+            },
+                
+			loadImports: function(callback) {
+                var needsCallback = true;
+                if (!this.importsLoaded) {
+                    this.importsLoaded = true;
+                    var t = this.getImports();
+                    if (t) {
+       	                var links = t.content.children;
+       	                var promises = [];
+       	                var that = this;
+       	                for(var i = 0; i < links.length; i++ )
+       	                {
+       	                    var link = links[i];
+       	                    if (link.localName === 'link')
+       	                    {
+       	                        var href = link.getAttribute('href');
+       	                        if (href)
+       	                        {
+       	                            promises.push(Q.Promise(function(resolve, reject) {
+       	                                that.importHref(href, resolve, reject);
+       	                            }));
+       	                        }
+       	                    }
+       	                }
+       	                if (promises.length > 0) {
+       	                    needsCallback = false;
+       	                    Q.all(promises).fail(function(reason) {
+       	                        console.log('failed to load import:' + reason);
+       	                    }).then(callback);
+       	                }
+                    }
+                }
+                if (needsCallback && callback) {
+                    callback();
+                }
+            },
+            
+
+// The following were copied from Polymer 0.5 [...
+            resolveDom: function (root, url) {
+                url = url || this.baseUrl(root);
+                this.resolveAttributes(root, url);
+                this.resolveStyles(root, url);
+                // handle template.content
+                var templates = root.querySelectorAll('template');
+                if (templates) {
+                    for (var i = 0, l = templates.length, t;
+                         (i < l) && (t = templates[i]); i++) {
+                        if (t.content) {
+                            this.resolveDom(t.content, url);
+                        }
+                    }
+                }
+            },
+            resolveTemplate: function (template) {
+                this.resolveDom(template.content, this.baseUrl(template));
+            },
+            resolveStyles: function (root, url) {
+                var styles = root.querySelectorAll('style');
+                if (styles) {
+                    for (var i = 0, l = styles.length, s;
+                         (i < l) && (s = styles[i]); i++) {
+                        this.resolveStyle(s, url);
+                    }
+                }
+            },
+            resolveStyle: function (style, url) {
+                url = url || this.baseUrl(style);
+                style.textContent = this.resolveCssText(style.textContent, url);
+            },
+            resolveCssText: function (cssText, baseUrl, keepAbsolute) {
+                var CSS_URL_REGEXP = /(url\()([^)]*)(\))/g;
+                var CSS_IMPORT_REGEXP = /(@import[\s]+(?!url\())([^;]*)(;)/g;
+                cssText = this.replaceUrlsInCssText(cssText, baseUrl, keepAbsolute, CSS_URL_REGEXP);
+                return this.replaceUrlsInCssText(cssText, baseUrl, keepAbsolute, CSS_IMPORT_REGEXP);
+            },
+            resolveAttributes: function (root, url) {
+                if (root.hasAttributes && root.hasAttributes()) {
+                    this.resolveElementAttributes(root, url);
+                }
+                // search for attributes that host urls
+                var URL_ATTRS = ['href', 'src', 'action', 'style', 'url'];
+                var URL_ATTRS_SELECTOR = '[' + URL_ATTRS.join('],[') + ']';
+                var nodes = root && root.querySelectorAll(URL_ATTRS_SELECTOR);
+                if (nodes) {
+                    for (var i = 0, l = nodes.length, n;
+                         (i < l) && (n = nodes[i]); i++) {
+                        this.resolveElementAttributes(n, url);
+                    }
+                }
+            },
+            resolveElementAttributes: function (node, url) {
+                url = url || this.baseUrl(node);
+                var URL_ATTRS = ['href', 'src', 'action', 'style', 'url'];
+                var _self = this;
+                URL_ATTRS.forEach(function (v) {
+                    var attr = node.attributes[v];
+                    var value = attr && attr.value;
+                    var replacement;
+                    var URL_TEMPLATE_SEARCH = '{{.*}}';
+                    if (value && value.search(URL_TEMPLATE_SEARCH) < 0) {
+                        var CSS_URL_REGEXP = /(url\()([^)]*)(\))/g;
+                        if (v === 'style') {
+                            replacement = _self.replaceUrlsInCssText(value, url, false, CSS_URL_REGEXP);
+                        } else {
+                            replacement = _self.resolveRelativeUrl(url, value);
+                        }
+                        attr.value = replacement;
+                    }
+                });
+            },
+
+            /*
+             var CSS_URL_REGEXP = /(url\()([^)]*)(\))/g;
+             var CSS_IMPORT_REGEXP = /(@import[\s]+(?!url\())([^;]*)(;)/g;
+             var URL_ATTRS = ['href', 'src', 'action', 'style', 'url'];
+             var URL_ATTRS_SELECTOR = '[' + URL_ATTRS.join('],[') + ']';
+             var URL_TEMPLATE_SEARCH = '{{.*}}';
+             var URL_HASH = '#';
+             */
+            baseUrl: function (node) {
+                var u = new URL(node.ownerDocument.baseURI);
+                u.search = '';
+                u.hash = '';
+                return u;
+            },
+
+            replaceUrlsInCssText: function (cssText, baseUrl, keepAbsolute, regexp) {
+                return cssText.replace(regexp, function (m, pre, url, post) {
+                    var urlPath = url.replace(/["']/g, '');
+                    urlPath = this.resolveRelativeUrl(baseUrl, urlPath, keepAbsolute);
+                    return pre + '\'' + urlPath + '\'' + post;
+                });
+            },
+
+            resolveRelativeUrl: function (baseUrl, url, keepAbsolute) {
+                // do not resolve '/' absolute urls
+                if (url && url[0] === '/') {
+                    return url;
+                }
+                // do not resolve '#' links, they are used for routing
+                if (url && url[0] === '#') {
+                    return url;
+                }
+                var u = new URL(url, baseUrl);
+                return keepAbsolute ? u.href : this.makeDocumentRelPath(u.href);
+            },
+
+            makeDocumentRelPath: function (url) {
+                var root = this.baseUrl(document.documentElement);
+                var u = new URL(url, root);
+                if (u.host === root.host && u.port === root.port &&
+                        u.protocol === root.protocol) {
+                    return this.makeRelPath(root, u);
+                } else {
+                    return url;
+                }
+            },
+
+            // make a relative path from source to target
+            makeRelPath: function (sourceUrl, targetUrl) {
+                var source = sourceUrl.pathname;
+                var target = targetUrl.pathname;
+                var s = source.split('/');
+                var t = target.split('/');
+                while (s.length && s[0] === t[0]) {
+                    s.shift();
+                    t.shift();
+                }
+                for (var i = 0, l = s.length - 1; i < l; i++) {
+                    t.unshift('..');
+                }
+                // empty '#' is discarded but we need to preserve it.
+                var URL_HASH = '#';
+                var hash = (targetUrl.href.slice(-1) === URL_HASH) ? URL_HASH : targetUrl.hash;
+                return t.join('/') + targetUrl.search + hash;
+            }
+// ...]
+
+        });
+
+    </script>
+</dom-module>

@@ -1,0 +1,1284 @@
+<!--
+    Copyright (c) 2014, Texas Instruments Incorporated
+    All rights reserved.
+
+    Redistribution and use in source and binary forms, with or without
+    modification, are permitted provided that the following conditions
+    are met:
+
+    *   Redistributions of source code must retain the above copyright
+    notice, this list of conditions and the following disclaimer.
+    notice, this list of conditions and the following disclaimer in the
+    documentation and/or other materials provided with the distribution.
+    *   Neither the name of Texas Instruments Incorporated nor the names of
+    its contributors may be used to endorse or promote products derived
+    from this software without specific prior written permission.
+
+    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+    AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+    THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+    PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+    CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+    EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+    PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+    OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+    WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+    OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+    EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+-->
+<link rel="import" href="../polymer/polymer.html">
+<link rel="import" href="../ti-service-programloader/ti-service-programloader-dialog.html">
+<link rel="import" href="../ti-core-assets/ti-core-assets.html">
+<link rel="import" href="../ti-core-databind/ti-core-databind.html">
+<!--
+`ti-service-programloader` enables downloading a binary file, erasing the target flash and burning the program into flash.
+
+Example:
+
+    <ti-service-programloader></ti-service-programloader>
+
+See demo.html for a full working example of how to use this component.
+
+@group Ti Elements
+@element ti-service-programloader
+@demo demo.html
+@homepage ../ti-guicomposer-helpindex/demo.html
+-->
+<dom-module id='ti-service-programloader'  >
+    <template>
+        <style>
+            :host {
+                display: block;
+                width: 175px;
+                height: 175px;
+            }
+        </style>
+
+    </template>
+    <script>
+        var gc = gc || {};
+        (function() {
+            var programLoaderServiceInstances = [];
+
+            Polymer ({
+                is: 'ti-service-programloader',
+                _self: undefined,
+                deleteSerialioUponDetach: false,
+                ds_loader: undefined,
+                ds: undefined,
+                core: undefined,
+                foundFlashMsg: false,
+                myTimeout: null,
+                requestId: 0,
+                MS_WAIT_FOR_FLASH_PROGRAMMING_COMPLETE: 75000,//was 45000
+                basicWaitingMsg: undefined,
+                states: [  // http://lamehacks.net/blog/implementing-a-state-machine-in-javascript/
+
+                    {
+                        'name': 'disconnected',
+                        'statusString': '',
+                        'waitForUser': true,
+                        'caption': 'Connect',
+                        'skip': false,
+                        'events': {
+                            'gotoNextState': 'backplaneReady',
+                            'backplane_ready': 'backplaneReady',
+                            'backplane_disconnect': 'disconnected',
+                            'backplane_disconnected': 'disconnected',
+                            'backplane_downloadTICloudAgent': 'disconnected'
+                        }
+                    },
+
+                    {
+                        'name': 'backplaneReady',
+                        'statusString': '',
+                        'waitForUser': false,
+                        'caption': 'Connected',
+                        'skip': false,
+                        'events': {
+                            'gotoNextState': 'showDownloadProgramBtn',
+                            'onTargetReady': 'showDownloadProgramBtn',
+                            'showDownloadProgramBtn': 'showDownloadProgramBtn',
+                            'backplane_disconnect': 'disconnected',
+                            'backplane_disconnected': 'disconnected',
+                            'backplane_downloadTICloudAgent': 'disconnected'
+
+                        }
+                    },
+                    {
+                        'name': 'waitForDeviceToBePluggedIn',
+                        'statusString': "",
+                        'caption': 'Disconnect',
+                        'waitForUser': true,
+                        'skip': false,
+                        'events': {
+                            'gotoNextState': 'disconnected',
+                            'onDownloadProgramError': 'waitForDeviceToBePluggedIn',
+                            'onUserSaysDevicePluggedIn': 'disconnected',
+                            'backplane_disconnect': 'disconnected',
+                            'backplane_disconnected': 'disconnected',
+                            'backplane_downloadTICloudAgent': 'disconnected'
+                        }
+                    },
+                    {
+                        'name': 'showDownloadProgramBtn',
+                        'caption': 'Download Program',
+                        'statusString': "",
+                        'waitForUser': true,
+                        'skip': false,
+                        'events': {
+                            'gotoNextState': 'downloadProgram',
+                            'downloadProgram': 'downloadProgram',
+                            'onProgramDownloadBtnClicked': 'downloadProgram',
+                            'onSkipProgramDownloadBtnClicked': 'targetProgrammed',
+                            'onTimeout': 'waitForDeviceToBePluggedIn',
+                            'backplane_disconnect': 'disconnected',
+                            'backplane_disconnected': 'disconnected'
+                        }
+                    },
+
+                    {
+                        'name': 'downloadProgram',
+                        'caption': 'Downloading program...',
+                        'statusString': 'Downloading program...',
+                        'waitForUser': false,
+                        'skip': false,
+                        'events': {
+                            'gotoNextState': 'targetProgrammed',
+                            'targetProgrammed': 'targetProgrammed',
+                            'onProgramDownloadBtnClicked': 'downloadProgram',
+                            'onSkipProgramDownloadBtnClicked': 'ready',
+                            'onProgramDownloadSuccess': 'ready',
+                            'onDownloadProgramError': 'waitForDeviceToBePluggedIn',
+                            'onDebugServerError':'waitForDeviceToBePluggedIn',
+                            'onProgramDownloadFailed': 'waitForDeviceToBePluggedIn',
+                            'backplane_disconnect': 'disconnected',
+                            'backplane_disconnected': 'disconnected'
+                        }
+                    },
+                    {
+                        'name': 'targetProgrammed',
+                        'statusString': "target programmed",
+                        'caption': 'Disconnect',
+                        'waitForUser': false,
+                        'skip': false,
+                        'events': {
+                            'gotoNextState': 'disconnect',
+                            'onDownloadProgramError': 'waitForDeviceToBePluggedIn',
+                            'onDebugServerError':'waitForDeviceToBePluggedIn',
+                            'onProgramDownloadFailed': 'waitForDeviceToBePluggedIn',
+                            'onProgramDownloadBtnClicked': 'downloadProgram',
+                            'onProgramDownloadSuccess': 'ready',
+                            'backplane_disconnect': 'disconnected',
+                            'backplane_disconnected': 'disconnected'
+                        }
+                    },
+                    {
+                        'name': 'ready',
+                        'statusString': "",
+                        'caption': 'ready',
+                        'waitForUser': false,
+                        'skip': false,
+                        'events': {
+                            'gotoNextState': 'disconnect',
+                            'onDownloadProgramError': 'waitForDeviceToBePluggedIn',
+                            'onDebugServerError':'waitForDeviceToBePluggedIn',
+                            'onProgramDownloadFailed': 'waitForDeviceToBePluggedIn',
+                            'onProgramDownloadSuccess': 'ready',
+                            'onProgramDownloadBtnClicked': 'downloadProgram',
+                            'backplane_disconnect': 'disconnected',
+                            'backplane_disconnected': 'disconnected'
+                        }
+                    },
+                    {
+                        'name': 'failed',
+                        'statusString': "Failed to program device.",
+                        'caption': 'Failed to program device.',
+                        'waitForUser': false,
+                        'skip': false,
+                        'events': {
+                            'gotoNextState': 'disconnect',
+                            'onDownloadProgramError': 'failed',
+                            'onDebugServerError':'waitForDeviceToBePluggedIn',
+                            'onProgramDownloadFailed': 'failed',
+                            'onProgramDownloadSuccess': 'ready',
+                            'backplane_disconnect': 'disconnected',
+                            'backplane_disconnected': 'disconnected'
+                        }
+                    },
+                    {
+                        'name': 'disconnect',
+                        'statusString': '',
+                        'caption': 'Disconnect',
+                        'waitForUser': true,
+                        'skip': false,
+                        'events': {
+                            'gotoNextState': 'disconnected',
+                            'backplane_disconnect': 'disconnected',
+                            'backplane_disconnected': 'disconnected'
+                        }
+                    }
+
+                ],
+                userActions: ['onTargetReady','onUserSaysDevicePluggedIn', 'onDownloadProgramBtnClicked', 'onSkipDownloadBtnClicked'],
+                stateIndexes: {},
+                prevState: undefined,
+
+                /**
+                 * Fired when the currentState changes and the current state's waitForUser property is true.
+                 *
+                 * @event currentStateUpdated
+                 */
+                /**
+                 * Fired when the status caption changes.
+                 *
+                 * @event statusMessageChanged
+                 */
+                /**
+                 * Fired when the client needs to show a 'unplug device and plug it back in' message.
+                 *
+                 * @event onReplugNeeded
+                 */
+                /**
+                 * Fired when the visibility of one of the buttons in the application that is associated
+                 * with ti-service-programloader needs to be changed
+                 *
+                 * @event programDownloadUIVisibilityChanged
+                 */
+                /**
+                 * Fired when the program has been successully downloaded into flash memory
+                 * and is ready for use
+                 *
+                 * @event programDownloadComplete
+                 */
+
+                /**
+                 * Fired when the dialog cancel button is clicked
+                 *
+                 *
+                 * @event cancelBtnClicked
+                 */
+
+                _deviceName: '',
+                hostAttributes: {
+                },
+
+                properties: {
+                    backplane: {
+                        notify: true,
+                        type: String,
+                        value: undefined,
+                        observer: "backplaneChanged"
+                    },
+                    /**
+                     * waitForTargetsReady is set to true by the application in situations where
+                     * the ti-service-serialio component is used.  The application is responsible for
+                     * calling setUserAction('onTargetReady'); in response to the serialIO.serialPortsReadyToBeOpened event
+                     *
+                     * @attribute waitForTargetReady
+                     * @type boolean
+                     * @default false
+                     */
+                    waitForTargetReady: {
+                        notify: true,
+                        type: Boolean,
+                        value: false
+                    },
+                    /**
+                     * An object that represents the device that is being interacted with.
+                     * The object must have the following fields:
+                     *  <p> {<br/>
+                         *   boardName:     'MSP-EXP430G2 v1.5',<br/>
+                         *   deviceName:      'MSP430G2553',<br/>
+                         *   fileName:      'ReadTempAndSendToSerialPort.cpp.hex',<br/>
+                         *   ccxmlString:   'the target ccxml file serialized as a string'<br/>
+                         *   ccxmlFileName: 'name to use for the ccxml file to be used by TICloudAgent'
+                         *   runTargetToReadMemory: 'true if a monitor on the target is used to read target memory'
+                         *
+                         *   }<br/>
+                     *   <p>Additional fields can be added for other device-specific information.  e.g.
+                     *   {
+                         *   startBtnName:  'Name of button to press to start target running: e.g. P1.3',<br/>
+                         *   boardImage:    'Name of image file of target board to display e.g. launchpad-mspexp430g2-02.jpg',<br/>
+                         *   startBtnImage  'Name of image file showing location of start button e.g. startbutton-mspexp430g2-02.jpg'<br/>
+                         *   }<br/>
+                     * <p>
+                     *
+                     * @attribute selectedDevice
+                     * @type object
+                     * @default undefined
+                     */
+                    selectedDevice: {
+                        notify: true,
+                        type: Object,
+                        value: undefined,
+                        observer: "selectedDeviceChanged"
+                    },
+
+                    /** the name of the target device for serial communications with the target.  This is only needed to auto program the
+                     * the target device with an image.
+                     *
+                     * @attribute deviceName
+                     * @type String
+                     */
+                    deviceName: {
+                        type: String,
+                        value: undefined
+                    },
+
+                    /** The name of the connection for programming the target.
+                     *
+                     * @attribute connectionId
+                     * @type String
+                     */
+                    connectionId: {
+                        type: String,
+                        value: undefined
+                    },
+
+                    /**
+                     * The name of the program to load onto the target device.  See 'targetFolder'
+                     * @attribute targetProgram
+                     * @type string
+                     */
+                    targetProgram: {
+                        type: String,
+                        value: undefined
+                    },
+                    /**
+                     * The name of the program image to use to verify the program loaded into the target device.
+                     * If specified, this will be used to determine whether or not the targetProgram is to be programmed
+                     * into the device or not.  Stored in the same targetFolder as the targetProgram (See 'targetFolder')
+                     * @attribute targetProgramVerifyImage
+                     * @type string
+                     */
+                    targetProgramVerifyImage: {
+                        type: String,
+                        value: undefined
+                    },
+                    /**
+                     * The relative or absolute path to the folder where the target program is located.
+                     * this attribute is optional, and if omitted, the default folder is 'target/'.
+                     * @attribute targetProgram
+                     * @type string
+                     */
+                    targetFolder: {
+                        type: String,
+                        value: undefined
+                    },
+
+                    /**
+                     * The current state of this object's internal state machine.
+                     *
+                     * @attribute currentState
+                     * @type string
+                     * @default 'disconnected'
+                     */
+                    currentState: {
+                        notify: true,
+                        type: String,
+                        value: undefined,
+                        observer: "_currentStateChanged"
+                    },
+                    // see https://groups.google.com/forum/#!msg/polymer-dev/IX_gvSQT78Y/UtxDo-M2H6MJ
+                    // and http://stackoverflow.com/questions/23861029/how-does-data-binding-in-polymer-work
+
+                    /**
+                     * a string representing the current status of the interactions with the target device.
+                     *
+                     * @attribute status
+                     * @type string
+                     * @default 'Disconnected.'
+                     */
+                    status: {
+                        notify: true,
+                        type: String,
+                        value: ""
+                    },
+                    /**
+                     * isProgramDownloadDisabled is set to true by the application in situations where
+                     * there is no program to download to the target (e.g. the program has already
+                     * been downloaded to the target)
+                     *
+                     * @attribute isProgramDownloadDisabled
+                     * @type boolean
+                     * @default false
+                     */
+                    isProgramDownloadDisabled: {
+                        notify: true,
+                        type: Boolean,
+                        value: false
+                    },
+                    /**
+                     * isAutoDownloadEnabled is set by the application in situations where the program
+                     * should always be automatically downloaded to the target after connection to the
+                     * target has been established.  If false, the application should provide a button
+                     * that the user can click on to initiate the program download, and call the
+                     * initiateProgramDownload function in response.
+                     *
+                     * @attribute isAutoDownloadEnabled
+                     * @type boolean
+                     * @default false
+                     */
+                    isAutoDownloadEnabled: {
+                        notify: true,
+                        type: Boolean,
+                        value: false
+                    },
+                    /**
+                     * isProgramDownloadBtnVisible indicates whether a button labeled 'Download program' with an on-click handler
+                     * of onDownloadProgramBtnClicked should be displayed or not.
+                     *
+                     * @attribute isProgramDownloadBtnVisible
+                     * @type boolean
+                     * @default false
+                     */
+                    isProgramDownloadBtnVisible: {
+                        notify: true,
+                        type: Boolean,
+                        value: false
+                    },
+                    /**
+                     * wasProgramDownloadSuccessful indicates whether the program has been successfully downloaded into the
+                     * target's flash memory or not.  Read this value in response to the programDownloadComplete event
+                     * to determine whether the target is ready to use or not.
+                     *
+                     * @attribute wasProgramDownloadSuccessful
+                     * @type boolean
+                     * @default false
+                     */
+                    wasProgramDownloadSuccessful: {
+                        notify: true,
+                        type: Boolean,
+                        value: false
+                    },
+                    /** Set to true when object ready has occurred
+                     * @attribute initialized
+                     * @type boolean
+                     * @default false
+                     */
+                    initialized: {
+                        notify: true,
+                        type: Boolean,
+                        value: false
+                    },
+
+                    modelId: {
+                        notify: false,
+                        type: String,
+                        value: undefined
+                    }
+                },
+
+                _backplaneCurrentStateChangedHdlr: function(e) {
+                    console.log('ti-service-programloader: backplaneCurrentState changed to ' + e.target.currentState.name);
+                    this.updateStateMachine('backplane_' + e.target.currentState.name);
+                },
+                backplaneCurrentStateChangedHdlr: undefined,
+
+                _backplaneConnectionStatusChangedHdlr: function(e) {
+                    console.log('ti-service-programloader: backplaneConnectionState changed .isConnectedToCloudAgent=' + e.target.isConnectedToCloudAgent);
+
+                },
+                backplaneConnectionStatusChangedHdlr: undefined,
+
+                _backplaneBtnVisibilityChangedHdlr: function(e) {
+                    if (e.target.isDisconnectBtnVisible) {
+                        this.isReplugNoticeVisible = false;
+                    }
+                },
+                _initiateReconnect: function(){
+                    gc.services = gc.services || {};
+                    var targetAccess = gc.services['ti-service-targetaccess'];
+                    if (targetAccess){
+                        targetAccess.initiateReconnect();
+                    } else if (this.backplane){
+                        var backplane = this.backplane;
+                        backplane.disconnect();
+                        window.setTimeout(function(){
+                            backplane.connect();
+                        }, 2500);
+                    }
+                },
+                initiateReconnect: undefined,
+                backplaneBtnVisibilityChangedHdlr: undefined,
+
+                backplaneChanged: function(newBackplane,oldBackplane) {
+                    if ((oldBackplane !== undefined) &&(oldBackplane !== null)){
+                        oldBackplane.removeEventListener("currentStateUpdated", this.backplaneCurrentStateChangedHdlr);
+                        oldBackplane.removeEventListener("connectionStatusChanged", this.backplaneConnectionStatusChangedHdlr);
+                        oldBackplane.removeEventListener("btnVisibilityChanged", this.backplaneBtnVisibilityChangedHdlr);
+                    }
+                    if (this.backplane !== undefined) {
+                        this.backplane.addEventListener("currentStateUpdated", this.backplaneCurrentStateChangedHdlr);
+                        this.backplane.addEventListener("connectionStatusChanged", this.backplaneConnectionStatusChangedHdlr);
+                        this.backplane.addEventListener("btnVisibilityChanged", this.backplaneBtnVisibilityChangedHdlr);
+                        // Have to wait until after the backplane has started TI Cloud Agent before calling getDs!
+                        if (this.backplane.currentState !== undefined) {
+                            console.log('ti-service-programloader: backplane event handlers initialized. backplane.currentState.name=' + this.backplane.currentState.name);
+                        }
+                        if (this.backplane.selectedDevice === undefined) {
+                            this.backplane.selectedDevice = this.selectedDevice;
+                        } else {
+                            this.selectedDevice = this.backplane.selectedDevice;
+                        }
+                        this.fire('backplaneChanged');
+                    }
+                },
+
+                selectedDeviceChanged: function() {
+                    // for backwards compatibility with older application code:
+                    if ((this.selectedDevice.deviceName === undefined) && (this.selectedDevice.chipName !== undefined)){
+                        this.selectedDevice.deviceName = this.selectedDevice.chipName;
+                    }
+                    this._deviceName = this.selectedDevice.deviceName;
+                    if (this.selectedDevice.boardName === undefined) {
+                        this.selectedDevice.boardName = this.selectedDevice.deviceName;
+                    }
+                    this.boardName = this.selectedDevice.boardName;
+
+                    this.fileName = this.selectedDevice.fileName;
+                    this.fileFolderName = this.selectedDevice.fileFolderName;
+                    this.basicWaitingMsg = this.selectedDevice.msgWaitingForData;
+                    this.msgWaitingForData = this.basicWaitingMsg;
+                },
+
+                _setStatus: function(strStatus) {
+                    this.status = strStatus;
+                    if (strStatus.length > 0) {
+                        this.fire('statusMsgUpdated');
+                    }
+                },
+                setStatus: undefined,
+
+                _cancelButtonClicked: function() {
+                    this.fire('cancelBtnClicked');
+                },
+                cancelButtonClicked: undefined,
+
+                //provided for testing purposes
+                /* returns true if state changed, false otherwise */
+                _updateStateMachine: function(strEventName) {
+                    if ((!this.$) || (!this.initialized)) return;
+                    var result = false;
+                    var origStateName = this.currentState.name;
+                    var newStateName = this.currentState.events[strEventName];
+                    if (newStateName) {
+                        console.log('ti-service-programloader: updateStateMachine event = ' + strEventName);
+                        if (newStateName !== origStateName) {
+                            this.prevState = this.currentState;
+                            var newIndex = this.stateIndexes[newStateName];
+                            this.currentState = this.states[newIndex];
+                            console.log('ti-service-programloader: state change from ' + origStateName + ' to ' + newStateName);
+                        }
+                        result = true;
+                    } else {
+                        console.log('OUT OF SEQUENCE updateStateMachine event: ' + strEventName)
+                        console.log(this.currentState.events.length + ' valid event names for state=' + this.currentState.name + ':');
+                        for (var i = 0; i < this.currentState.events.length; i++) {
+                            console.log('event[' + i + ']=' + this.currentState.events[i].name);
+                        }
+                    }
+
+                    return (result);
+                },
+                updateStateMachine: undefined,
+
+                _currentStateChanged: function() {
+
+                    if (!this.initComplete) return;
+                    var _self = this;
+                    console.log('onCurrentStateChanged: currentState.name=' + this.currentState.name);
+                    if ((this.currentState.statusString) && (this.currentState.statusString.length > 0)) {
+                        this.setStatus(this.currentState.statusString);
+                    }
+                    console.log('onCurrentStateChanged: status=' + this.status);
+                    this.prevState = this.currentState;
+                    switch (this.currentState.name) {
+                        case 'disconnected':
+                            this.isProgramDownloadBtnVisible = false;
+
+                            this.fire('programDownloadUIVisibilityChanged');
+                            break;
+                        case 'backplaneReady':
+                            var dialog = this._getDialog();
+                            if (dialog) {
+                                dialog.close(); // close dialog when reconnecting to target.
+                            }
+                            if (!this.waitForTargetReady) {
+                                this.updateStateMachine('showDownloadProgramBtn');
+                            }
+                            break;
+                        case 'showDownloadProgramBtn':
+                            if ((this.backplane) && (this.backplane.agent)) {
+
+                                this.backplane.agent.getSubModule("Flash").then(function (newModule) {
+                                    if (!_self.isProgramDownloadDisabled) {
+                                        if (_self.isAutoDownloadEnabled) {
+                                            _self.isAutoDownloadEnabled = false;
+                                            _self.updateStateMachine('downloadProgram');
+                                            return;
+                                        } else {
+                                            // wait for the onDownloadBtnClicked event to flash the device
+                                            _self.isProgramDownloadBtnVisible = true;
+                                            _self.fire('programDownloadUIVisibilityChanged');
+                                        }
+                                    } else {
+                                        _self.updateStateMachine('onSkipProgramDownloadBtnClicked');
+                                        return;
+                                    }
+                                }).fail(function (err) {
+                                    console.log('Error: err=' + err.toString());
+                                    _self.updateStateMachine('onDebugServerError');
+                                });
+
+                            }
+                            break;
+                        case 'downloadProgram':
+                            this.isProgramDownloadBtnVisible = false;
+                            this.wasProgramDownloadSuccessful = false;
+                            this.fire('programDownloadUIVisibilityChanged');
+                            this.ds = this.backplane.ds;
+                            console.log('ti-service-programloader: ds =' + this.ds);
+                            var _self = this;
+                            Q().then(function() {
+                                if (_self.deviceName && _self.connectionId) {
+                                    var defaultCcxml = gc && gc.connectionManager && _self.modelId && gc.connectionManager.getDefaultCcxmlFile(_self.modelId, 'jtag');
+                                    return _self.backplane.setSelectedDevice(_self.deviceName, _self.connectionId, defaultCcxml);
+                                }
+                            }).then(function() {
+                                return Q.promise(function(resolve) {
+                                    _self.backplane.configureDebugServer(_self.backplane.selectedDevice.deviceName+'.ccxml',_self.backplane.selectedDeviceCcxmlString,false, false, resolve);
+                                }).then(function(error) {
+                                    // configure the target ccxml file (if required).  If this has already been done, it will call
+                                    // the callback function with error = null and isDebugServerConfigured = true.
+                                    if ((!_self.backplane.isDebugServerConfigured) ||
+                                        ((error !== undefined) && (error !== null))) {
+                                        var msg = error;
+                                        if (msg === undefined){
+                                            msg = 'unknown.';
+                                        } else {
+                                            if (Array.isArray(error)) {
+                                                msg = error[0];
+                                            }
+                                            if (msg !== undefined) {
+                                                if (msg.message !== undefined) {
+                                                    msg = msg.message;
+                                                } else if (msg.msg !== undefined) {
+                                                    msg = msg.msg;
+                                                }
+                                            }
+                                        }
+                                        console.log('ti-service-programloader: failed to download Program.  error='+msg);
+                                        _self.setStatus("Error configuring Debug Server: error="+msg);
+                                        _self.updateStateMachine('onProgramDownloadFailed');
+                                    } else {
+                                        if (gc.connectionManager && this.modelId) {
+                                            gc.connectionManager.setProgressMessage(this.modelId, 'Connected to target.');
+                                        }
+                                        if (_self.backplane.isDebugServerConfigured) {
+                                            _self.core = _self.backplane.core;
+                                            return _self.flashDevice();
+                                        } else {
+                                            console.log("ti-service-programloader: failed to download Program.  backplane.isDebugServerConfigured = false")
+                                        }
+                                    }
+                                });
+                            });
+                            break;
+                        case 'targetProgrammed':
+                            this.isProgramDownloadBtnVisible = false;
+                            this.fire('programDownloadUIVisibilityChanged');
+                            break;
+                        case 'ready':
+                            if (this.isProgramDownloadBtnVisible) {
+                                this.isProgramDownloadBtnVisible = false;
+                                this.fire('programDownloadUIVisibilityChanged');
+                            }
+                            this.setStatus('Flash Successful!');
+                            if (this.myTimeout !== null){
+                                window.clearTimeout(this.myTimeout);
+                                this.myTimeout = null;
+                            }
+                            this.wasProgramDownloadSuccessful = true;
+                            console.log('ti-service-programDownload: firing programDownloadComplete event...');
+                            this.fire('programDownloadComplete');
+                            break;
+                        case 'waitForDeviceToBePluggedIn':
+                            this.isProgramDownloadBtnVisible = false;
+                            this.isReplugNoticeVisible = true;
+                            this.fire('programDownloadUIVisibilityChanged');
+                            this.ds_loader = undefined;
+                            //fire an event to notify the client that they need to show a 'unplug device and plug it back in' message.
+                            this.fire('replugNoticeVisibilityChanged');
+//                        this.backplane.updateStateMachine('onDisconnectBtnClicked');
+                            break;
+                        case 'disconnect':
+                            this.ds_loader = undefined;
+                            this.isProgramDownloadBtnVisible = false;
+                            this.fire('programDownloadUIVisibilityChanged');
+                            this.updateStateMachine('disconnectComplete');
+                            break;
+
+                    }
+                    ;
+                    if (this.currentState.waitForUser) {
+                        this.fire('currentStateUpdated');
+                    }
+                    ;
+
+                },
+                currentStateChanged: undefined,
+
+
+                setUserAction: function(e) {
+                    console.log('setUserAction: ' + e);
+                    if (this.currentState.events[e]) {
+                        this.currentState = this.states[this.stateIndexes[this.currentState.events[e]]];
+                        console.log('updated currentState to ' + this.currentState.name);
+                    }
+                },
+                debugPrint: function(str) {
+                    var isDebuggingEnabled = true;
+                    if (isDebuggingEnabled) {
+                        console.log(str);
+                    }
+                },
+                downloadFile: function(target) {
+                    var _self = this;
+                    var path = target.getAttribute("path");
+                    var name = target.getAttribute("name");
+                    if (ticloudagent_isSafari()) {
+                        var a = document.createElement("a");
+                        a.download = name;
+                        a.href = path;
+                        a.click();
+                    }
+                    else {
+                        var req = new XMLHttpRequest();
+                        req.open('GET', path, true);
+                        req.responseType = "blob";
+                        req.onreadystatechange = function() {
+                            if (req.readyState == 4) {
+                                require("./FileSaver");
+                                saveAs(req.response, name);
+                            }
+                        };
+                        req.send(null);
+                    }
+                },
+
+                /* bc: remove stuff related specifically to cloud9
+
+                 });
+                 });
+                 */
+                waitForSocketConnection: function(socket, callback) {
+                    setTimeout(
+                        function() {
+                            if (socket.readyState === 1) {
+                                if (callback !== undefined) {
+                                    callback();
+                                }
+                                return;
+                            } else {
+                                // keep waiting if socket is connecting
+                                if (socket.readyState == 0) {
+                                    waitForSocketConnection(socket, callback);
+                                } else {
+                                    //TODO: handle case where socket is closing (2) or closed(3)
+                                    console.log("ERROR: webSocket readyState =" + socket.readyState + ', (2=closing, 3=closed)');
+                                }
+                            }
+                        }, 5);
+                },
+                MSG_TYPES: {
+                    WAITING_FOR_BINARY_DATA: "DS_WAITING_FOR_BINARY_DATA",
+                    ERROR: "DS_ERROR",
+                    SUCCESS: "DS_SUCCESS",
+                    OUTPUT_TEXT: "DS_OUTPUT_TEXT"
+                },
+                createBaseMessageHandler: function(output, callback, input) {
+
+                    var baseMessageHandler = {};
+                    baseMessageHandler[this.MSG_TYPES.WAITING_FOR_BINARY_DATA] = function(message) {
+                    };
+
+                    baseMessageHandler[this.MSG_TYPES.ERROR] = function(message) {
+                        /*if ((output !== undefined) && (output !== null)) {
+                         output.text(message.data);
+                         }
+                         */
+                        console.log('ccs_debug baseMessageHandler: error = ' + message.data);
+                        //TODO define proper errors like DS.ERROR
+                        callback({name: "error", message: message.data}, message.data);
+                    };
+
+                    baseMessageHandler[this.MSG_TYPES.SUCCESS] = function(message) {
+                        if (((typeof message.data) === 'string') && (output !== undefined) && (output !== null)) {
+                            //output.text(message.data);
+                            console.log('ccs_debug baseMessageHandler: success = ' + message.data);
+                            if (message.data.toLowerCase().indexOf('flash successful') >= 0) {
+                                console.log('ccs_debug baseMessageHandler: setting foundFlashMsg = true');
+                                _self.foundFlashMsg = true;
+                                window.clearTimeout(this.myTimeout);
+                                _self.timeoutSet = false;
+                            }
+                        } else {
+                            console.log('ccs_debug baseMessageHandler: success! about to call callback (e.g. programLoadComplete)');
+                        }
+
+                        callback(null, input ? input : message.data);
+                    };
+
+                    baseMessageHandler[this.MSG_TYPES.OUTPUT_TEXT] = function(message) {
+                        if ((message === null) || (message === undefined) || (message.data === undefined) || (message.data === null)) {
+                            console.log('ccs_debug baseMessageHandler: output_text - null message!');
+
+                        } else {
+                            console.log('ccs_debug baseMessageHandler: output_text = ' + message.data);
+                            // possible messages: Flashing Device... Flash Successful!
+                            if (message.data.toLowerCase().indexOf('flash successful') >= 0) {
+                                console.log('ccs_debug baseMessageHandler: setting foundFlashMsg = true');
+                                _self.foundFlashMsg = true;
+                                window.clearTimeout();
+                                _self.timeoutSet = false;
+                            }
+                        }
+                        if ((output !== undefined) && (output !== null)) {
+                            output.text(message.data);
+                        }
+                    };
+
+                    baseMessageHandler.handle = function(msgEvt) {
+                        var message = JSON.parse(msgEvt.data);
+                        var handler = this[message.msgType];
+                        handler ? handler(message) : console.log("Unhandled Message Type : " + message.msgType);
+                    };
+
+                    return baseMessageHandler;
+                },
+                consoleOutput: function() {
+                    text = function(message) {
+                        console.log(message);
+                    }
+                },
+
+                socketCache: [],
+                socketUrl: function(port) {
+                    if (backplane.isSecureWebPage) {
+                        return "wss://localhost:" + port + "/socket/";
+                    } else {
+                        return "ws://localhost:" + port + "/socket/";
+                    }
+                },
+                stringEndsWith: function(str, suffix) {
+                    return str.indexOf(suffix, str.length - suffix.length) !== -1;
+                },
+                stringStartsWith: function(str, prefix){
+                    return str.indexOf(prefix) === 0;
+                },
+                getPathToTargetProgram: function(targetFolderPath, targetProgramName) {
+                    var _self = this;
+                    var result = null;
+                    return Q.promise(function(resolve) {
+                        if ((targetProgramName) && (targetFolderPath)) {
+                            result = targetFolderPath;
+                            if (!_self.stringEndsWith(targetFolderPath,'/')) {
+                                result += '/';
+                            }
+                            result += targetProgramName;
+                            console.log("getPathToTargetProgram = "+result);
+                            return resolve(result);
+                        } else {
+                            if (_self.selectedDevice !== undefined) {
+                                if (!_self.stringEndsWith(_self.selectedDevice.fileFolderName, '/')) {
+                                    result = _self.selectedDevice.fileFolderName + '/' + _self.selectedDevice.fileName;
+                                } else {
+                                    result = _self.selectedDevice.fileFolderName + _self.selectedDevice.fileName;
+                                }
+                                console.log("getPathToTargetProgram = " + result);
+                                return resolve(result);
+                            } else {
+                                return gc.fileCache.readJsonFile('project.json').then(function (manifest) {
+                                    result = path.join(manifest.target_out_foldername, manifest.target_out_filename);
+                                    console.log("getPathToTargetProgram = " + result);
+                                    return (resolve(result));
+
+                                }).fail(function (error) {
+                                    console.log('ti-service-programloader.getPathToTargetProgram: error = ' + error);
+                                    return resolve(null);
+                                });
+                            }
+                        }
+
+                    });
+                },
+                flashDevice: function() {
+                    this.isFlashComplete = false;
+                    var _self = this;
+                    var pathToTargetProgram = null;
+                    var pathToTargetProgramVerifyImage = null;
+                    return Q.all([
+                        _self.getPathToTargetProgram((_self.targetFolder || 'target'), _self.targetProgram).then(function(filePath) {
+                            return filePath;
+                        }).fail(function(err){
+
+                        }),
+                        _self.getPathToTargetProgram((_self.targetFolder || 'target'), _self.targetProgramVerifyImage).then(function(filePath) {
+                            return filePath;
+                        }).fail(function(err){
+
+                        })
+                    ]).then(function(results){
+                        if (!results[0]) {
+                            throw ("No program file specified.");
+                        }
+                        pathToTargetProgram = results[0];
+                        pathToTargetProgramVerifyImage = results[1];
+                        _self.setStatus('Downloading program into ' + _self.backplane.selectedDevice.deviceName + '...');
+                        _self.myTimeout = window.setTimeout(function () {
+                            console.log("Timeout waiting for programming to complete.");
+                            _self.onProgrammingStatusUpdate(
+                                {message: 'Timeout waiting for mspdebug.'}, "Timeout");
+                            _self.updateStateMachine('onDownloadProgramError');
+                        }, _self.MS_WAIT_FOR_FLASH_PROGRAMMING_COMPLETE);
+                        return _self.downloadProgram(_self.core, false, pathToTargetProgram,pathToTargetProgramVerifyImage);
+                    }).then(function () {
+                        _self.updateStateMachine('onProgramDownloadSuccess');
+                        if (_self.myTimeout !== undefined) {
+                            window.clearTimeout(_self.myTimeout);
+                        }
+                        _self.myTimeout = undefined;
+                    }).fail(function (error) {
+                        var msg = "";
+                        if (typeof error === 'string'){
+                            msg = error;
+                        } else {
+                            if (error.message){
+                                msg = error.message;
+                            }
+                        }
+                        if (msg.length > 0) {
+                            console.log('Error downloading program: error.message=' + msg);
+                            msg = "Error downloading program: " + msg;
+                            if (msg.indexOf("404") === -1) {
+                                msg += "  Please unplug your " + _self.selectedDevice.boardName + ", then plug it back in and try again."
+                            }
+                        } else {
+                            msg = "Error downloading program: Please unplug your " + _self.selectedDevice.boardName + ", then plug it back in and try again";
+                        }
+                        _self.setStatus(msg);
+                        if (_self.myTimeout !== undefined) {
+                            window.clearTimeout(_self.myTimeout);
+                        }
+                        _self.myTimeout = undefined;
+                        _self.updateStateMachine('onDownloadProgramError');
+                    });
+                },
+                downloadProgram: function(coreObj, symbolsOnly, programPathURL, programVerifyPathURL){
+                    var _self = this;
+                    var verificationSetting = '';
+                    var verificationFailed = false;
+                    if (!this.backplane){
+                        throw "ti-service-programloader.downloadProgram: backplane not defined"
+                    }
+                    if (!this.backplane.selectedDevice) {
+                        throw "ti-service-programloader.downloadProgram: backplane.selectedDevice not defined"
+                    }
+                    if (!this.selectedDevice){
+                        this.selectedDevice = this.backplane.selectedDevice;
+                    }
+                    if (!this.selectedDevice) {
+                        throw "ti-service-programloader.downloadProgram: selectedDevice not defined"
+                    }
+                    if (!this.selectedDevice.deviceName) {
+                        throw "ti-service-programloader.downloadProgram: selectedDevice.deviceName not defined"
+                    }
+                    var programPath = '';
+                    var programDataFileName =  _self.selectedDevice.deviceName + '.data';
+                    var programVerifyPath = null;
+                    var programVerifyFileName = _self.selectedDevice.deviceName + '_verify.data';
+                    var verifyWithProgramDataFile = (programPathURL === programVerifyPathURL);
+                    return Q.promise(function(resolve,reject) {
+                        try {
+                            if ((!programPathURL) || (programPathURL.length === 0)) {
+                                return reject('No Target Program Specified');
+                            }
+                            if (!coreObj) {
+                                return reject('No Target Device core specified');
+                            }
+                            window.parent.gc.fileCache.readBinaryFile(programPathURL).then(function (data) {
+                                //var blob = new Blob([data], {type: 'application/octet-binary'});
+                                //return TICloudAgent.Util.encodeAsBase64(blob);
+                                return TICloudAgent.Util.encodeAsBase64(data);
+                            }).then(function (data) {
+                                return _self.backplane.file.write(programDataFileName, data);
+                            }).then(function (obj) {
+                                programPath = obj.path.replace(/\\/g, "/");
+
+                                // turn off auto run label, so our program will be just running after
+                                if (symbolsOnly) {
+                                    console.log('ti-service-programloader.loadProgram: about to call GEL_SymbolLoad... programPath=' + programPath);
+                                    //return coreObj.expressions.evaluate('GEL_SymbolLoad("' + programPath + '")');
+                                    throw ("symbols only");
+                                } else {
+                                    return coreObj.expressions.evaluate("DEBUG_SetStringProperty( \"AutoRunToLabelName\", \"\" )");
+                                }
+                            }).then(function (result) {
+                                if (!programVerifyPathURL) {
+                                    throw "skip verification";
+                                }
+                                // Note: VerifyAfterProgramLoad is a bad name for this property - it controls how verification is done when symbols.verifyProgram is called.
+                                return coreObj.settings.get("VerifyAfterProgramLoad")
+                            }).then(function (value) {
+                                verificationSetting = value;
+                                return coreObj.settings.set({VerifyAfterProgramLoad: "Full verification"})
+                            }).then(function(){
+                                if (verifyWithProgramDataFile) {
+                                    return null;
+                                }
+                                return window.parent.gc.fileCache.readBinaryFile(programVerifyPathURL);
+                            }).then(function (data) {
+                                if (verifyWithProgramDataFile) {
+                                    return null;
+                                }
+                                return TICloudAgent.Util.encodeAsBase64(data);
+                            }).then(function(data) {
+                                if (verifyWithProgramDataFile) {
+                                    return null;
+                                }
+                                return _self.backplane.file.write(programVerifyFileName, data);
+                            }).then(function(obj) {
+                                if (verifyWithProgramDataFile) {
+                                    programVerifyPath = programPath;
+                                } else {
+                                    programVerifyPath = obj.path.replace(/\\/g, "/");
+                                }
+
+                            }).then(function () {
+                                // now do verify
+                                console.log('ti-service-programloader.loadProgram: about to call verify programVerifyPath=' + programVerifyPath);
+                                return coreObj.symbols.verifyProgram(programVerifyPath);
+                            }).then(function () {
+                                console.log("verification passed.  About to reset the target...");
+                                return coreObj.expressions.evaluate('GEL_Reset()');
+                            }).catch(function (err) {  // catch here, because we only want to catch failures for verify and not earlier failures
+                                // verification failed for some reason, so load the program
+                                var errMsg = err;
+                                if ((err) && (err.message)) {
+                                    errMsg = err.message;
+                                }
+                                if (err === "symbols only"){
+                                    console.log('ti-service-programloader.loadProgram: about to loadSymbols.  programPath= ' + programPath);
+                                    return coreObj.symbols.loadSymbols(programPath);
+                                } else {
+                                    if (err !== "skip verification") {
+                                        console.log('ti-service-programloader.loadProgram: verification failed.  err = ' + errMsg);
+                                        verificationFailed = true;
+                                    }
+                                    console.log('ti-service-programloader.loadProgram: about to loadProgram.  programPath= ' + programPath);
+                                    return coreObj.symbols.loadProgram(programPath);
+                                }
+                            }).finally(function () {
+                                if ((!symbolsOnly) && (programVerifyPathURL)) {
+                                    if (!verificationFailed) {
+                                        console.log('ti-service-programloader.loadProgram: verification OK, skipping loadProgram.');
+                                    }
+                                    coreObj.settings.set({VerifyAfterProgramLoad: verificationSetting});
+                                }
+                            }).then(resolve, reject);
+
+                        } catch(e) {
+                            reject(e);
+                        }
+                    });
+                },
+
+                /**
+                 * Load program parameters
+                 * @typedef {Object} loadProgramParams
+                 * @property {Object} data binary data to be written
+                 * @property {number} loadAddress load address [optional]
+                 * @property {number} runAddress run address [optional]
+                 */
+
+                onProgrammingStatusUpdate: function(error, text) {
+                    //bc: HACK: not sure why timeout messages are coming in after flash successful
+                    console.log('ti-service-programloader: in callback from backplane.flash');
+                    if (!this.isFlashComplete) {
+                        if (text) {
+                            console.log('ti-service-programloader: ds_loader.localServer.flash text = ' + text);
+                            var lcText = text.toLowerCase();
+                            if (lcText.indexOf('flash successful') >= 0) {
+                                this.isFlashComplete = true;
+                            }
+                            else {
+                                if (lcText.indexOf('erase successful') >= 0) {
+                                    this.isEraseComplete = true;
+                                    this.setStatus('Erase complete...');
+                                    if (this.myTimeout !== null) {
+                                        window.clearTimeout(this.myTimeout);
+                                        this.myTimeout = null;
+                                    }
+                                    this.myTimeout = window.setTimeout(function(){this.onProgrammingStatusUpdate({message: 'Timeout waiting for mspdebug.'},"Timeout");},this.MS_WAIT_FOR_FLASH_PROGRAMMING_COMPLETE);
+                                }
+                            }
+                            this.setStatus(this.downloadingStatusMsgPrefix + ': ' + text);
+
+                        }
+                        if (error) {
+                            if ((error.message !== undefined) && (error.message !== null)) {
+                                console.log('Error downloading program: error.message' + error.message);
+                            } else {
+                                console.log('Error downloading program.  error.message == null or undefined');
+                            }
+                            this.setStatus("Error downloading program: Please unplug your " + this.boardName + ', plug it back in, click Disconnect and try again.' +
+                                '  Please also close any other windows that are running this demo and close any applications such as mspdebug or Energia that are connected to your Launchpad.');
+                            this.updateStateMachine('onProgramDownloadFailed');
+
+                        } else {
+                            if ((this.isFlashComplete) && (!this.hasOpenSerialPortBeenCalled)) {
+                                debugPrint('ti-service-programloader: in callback from flash - no error.  Download complete.  About to open serial port');
+                                this.setStatus("Download complete.");
+                                if (this.myTimeout !== null) {
+                                    window.clearTimeout(this.myTimeout);
+                                    this.myTimeout = null;
+                                }
+                                this.hasOpenSerialPortBeenCalled = true;
+                                this.updateStateMachine('onProgramDownloadSuccess');
+                            }
+                        }
+                    } else {
+                        // Put breakpoint here:
+                        console.log('debug this: isFlashComplete=' + this.isFlashComplete + ', hasOpenSerialPortBeenCalled=' + this.hasOpenSerialPortBeenCalled + ', text=' + text + ',error=' + error);
+                    }
+                },
+                created: function() {
+                    this.setStatus = this._setStatus.bind(this);
+                    this.initiateReconnect = this._initiateReconnect.bind(this);
+                    this.updateStateMachine = this._updateStateMachine.bind(this);
+                    this.cancelButtonClicked = this._cancelButtonClicked.bind(this);
+                    this.currentStateChanged = this._currentStateChanged.bind(this);
+                    this.backplaneCurrentStateChangedHdlr = this._backplaneCurrentStateChangedHdlr.bind(this);
+                    this.backplaneConnectionStatusChangedHdlr = this._backplaneConnectionStatusChangedHdlr.bind(this);
+                    this.backplaneBtnVisibilityChangedHdlr = this._backplaneBtnVisibilityChangedHdlr.bind(this);
+                },
+                ready: function() {
+                    this.enteredView();
+                    // this.addEventListener("valueChanged",dialValueChangedHandler,false);
+                    this.initialized = true;
+                },
+                initComplete: false,
+// see https://groups.google.com/forum/#!searchin/polymer-dev/binding/polymer-dev/wzfxU9vVAg0/1sFyrmnxy5EJ for info on why initialization is not
+// considered complete until either enteredView or created is called
+                enteredView: function() {
+                    this.stateIndexes = {};
+                    for (var i = 0; i < this.states.length; i++) {
+                        this.stateIndexes[this.states[i].name] = i;
+                    }
+                    this.currentState = this.states[0];
+                    this.prevState = this.currentState;
+
+                    this.currentState = this.states[0];
+                    this.initComplete = true;
+                },
+                dialog: undefined,
+                _getDialog: function(){
+                    var result = this.dialog;
+                    if (!result) {
+                        result = document.querySelector('ti-service-programloader-dialog');
+                        if (!result) {
+                            result = document.createElement('ti-service-programloader-dialog');
+                            result.id = "programLoaderDialog";
+                            document.body.appendChild(result);
+                        }
+                        this.dialog = result;
+                    }
+                    return result;
+                },
+                attached: function() {
+                    gc.services = gc.services || {};
+                    programLoaderServiceInstances.push(this);
+                    gc.services['ti-service-programloader'] = programLoaderServiceInstances[0];
+
+                    // have to programmatically add the dialog, which listens for events to display itself automatically.
+                    this.dialog = this._getDialog();
+
+                    var _self = this;
+                    var onBackplaneReady = function() {
+                        _self.backplane = gc.services['ti-core-backplane'];
+                        document.removeEventListener('ti-core-backplane-ready', onBackplaneReady);
+                    };
+
+                    if ((gc.services !== undefined) && (gc.services['ti-core-backplane'])) {
+                        onBackplaneReady();
+                    } else {
+                        document.addEventListener('ti-core-backplane-ready', onBackplaneReady);
+                    }
+                },
+                detached: function() {
+                    for(var i = programLoaderServiceInstances.length; i--> 0; ) {
+                        if(programLoaderServiceInstances[i] === this) {
+                            programLoaderServiceInstances.splice(i, 1);
+                        }
+                    }
+                    gc.services['ti-service-programloader'] = programLoaderServiceInstances[0];
+                    this.backplane = undefined;
+                },
+                doesSelectedDeviceSupportDownload: function() {
+                    var result = ((this.backplane) && (this.backplane.selectedDevice) &&
+                        (this.backplane.selectedDevice.connectionId !== 'UART connection'));
+                    return this.backplane;
+                },
+                canProgramTargetDevice: function()
+                {
+                    return this.isProgramDownloadBtnVisible;
+                },
+                doProgramTargetDevice: function(progressCallback)
+                {
+                    return Q.promise(function(resolve, reject)
+                    {
+                        var downloadStatusListener = function()
+                        {
+                            progressCallback(this.status, this.status.toUpperCase().indexOf('ERROR') >= 0 ? 'error' : 'info');
+                        }.bind(this);
+
+                        var downloadFinishedListener = function()
+                        {
+                            if (this.wasProgramDownloadSuccessful)
+                            {
+                                resolve();
+                            }
+                            else
+                            {
+                                reject('Failed to download program.');
+                            }
+                            this.removeEventListener('programDownloadUIVisibilityChanged', downloadFinishedListener);
+                            this.removeEventListener('replugNoticeVisibilityChanged', downloadFinishedListener);
+                            this.removeEventListener('programDownloadComplete', downloadFinishedListener);
+                            this.removeEventListener('statusMsgUpdated', downloadStatusListener);
+                        }.bind(this);
+
+                        if (!this.isProgramDownloadBtnVisible)
+                        {
+                            reject('Program flash is not available for this device at this time.');
+                        }
+                        else
+                        {
+                            if (progressCallback)
+                            {
+                                this.addEventListener('statusMsgUpdated', downloadStatusListener);
+                            }
+                            this.updateStateMachine('onProgramDownloadBtnClicked');
+                            this.addEventListener('programDownloadComplete', downloadFinishedListener);
+                            this.addEventListener('replugNoticeVisibilityChanged', downloadFinishedListener);
+                            this.addEventListener('programDownloadUIVisibilityChanged', downloadFinishedListener);
+                        }
+                    }.bind(this));
+                }
+            })
+        }());
+    </script>
+
+</dom-module>

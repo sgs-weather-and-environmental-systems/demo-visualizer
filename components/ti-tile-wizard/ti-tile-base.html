@@ -1,0 +1,352 @@
+<!--
+    Copyright (c) 2015, Texas Instruments Incorporated
+    All rights reserved.
+
+    Redistribution and use in source and binary forms, with or without
+    modification, are permitted provided that the following conditions
+    are met:
+
+    *   Redistributions of source code must retain the above copyright
+        notice, this list of conditions and the following disclaimer.
+        notice, this list of conditions and the following disclaimer in the
+        documentation and/or other materials provided with the distribution.
+    *   Neither the name of Texas Instruments Incorporated nor the names of
+        its contributors may be used to endorse or promote products derived
+        from this software without specific prior written permission.
+
+    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+    AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+    THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+    PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+    CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+    EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+    PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+    OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+    WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+    OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+    EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+-->
+<link rel="import" href="../paper-material/paper-material.html">
+<!--
+`ti-tile-base` provides common properties and methods shared by all tiles.
+  You should not use this in your project directly.
+
+
+@group Instrument Tiles
+@polymerBehavior TiTileBase
+@homepage ../../../ti-guicomposer-helpindex/demo.html
+-->
+
+<script>
+	/** @polymerBehavior */
+    TiTileBase = {
+
+
+        // hide the following from bindings in designer
+
+
+        hostAttributes: {
+        },
+
+        properties: {
+		    /**
+	         * Controls whether or not scroll bars, both horizontal and/or vertical, are added to this container
+	         * automatically when child widgets are positioned outside of this continers boundaries.  Use this
+	         * to create scrollable container.
+	         *
+	         * @attribute _autoScroll
+	         * @type Boolean
+	         * @default false
+	         */
+	        _autoScroll: {
+				notify: true,
+				type: Boolean,
+				value: false,
+				observer: "_autoScrollChanged"
+			},
+            /**
+             * elevation controls the drop shadow depth behind the tiles
+             *
+             * @attribute elevation
+             * @type number
+             * @default 2
+             */
+            elevation: {
+                notify: true,
+                type: Number,
+                value: 3,
+                observer: "elevationChanged",
+                reflectToAttribute: true
+            },
+            /**
+             * Controls the visible state of the tile.
+             *
+             * @attribute visible
+             * @type boolean
+             * @default true
+             */
+            visible: {
+                notify: true,
+                type: Boolean,
+                value: true,
+                observer: "visibleChanged"
+            },
+            /**
+             * Controls the non-visible state of the tile.  This is the opposite of the
+             * visible attribute.  If the visible attribute is bound to a target variable,
+             * you can use this attribute to hide the tile until the visible binding has
+             * been evaluated.
+             *
+             * @attribute nonvisible
+             * @type boolean
+             * @default false
+             */
+            nonvisible: {
+                notify: true,
+                type: Boolean,
+                value: false,
+                observer: "nonvisibleChanged"
+            },
+
+            /**
+             * the css string used to style the title section.  e.g. can set background-color, border-top, border-bottom, font-size, etc.
+             *
+             * @attribute titleStyle
+             * @type string
+             * @default font-size:medium;font-weight:bold;font-color:#555555;height:40px;
+             */
+            titleStyle:{
+                notify: true,
+                type: String,
+                value: 'font-size:medium;font-weight:bold;font-color:#555555;height:40px;',
+                observer: "updateVisibility"
+            },
+            /**
+             * containerPadding - set to 0 to turn off the default padding around the edge of the container.
+             * Useful when using the markdown tiles for documentation.
+             *
+             * @attribute containerPadding
+             * @type String
+             * @default "1em"
+             */
+            containerPadding: {
+                notify: false,
+                type: String,
+                value: "1em"
+            },
+            /**
+             * The background color of the tile.
+             *
+             * @attribute backgroundColor
+             * @type color
+             * @default '#ffffff'
+             */
+            backgroundColor: {
+                notify: false,
+                type: String,
+                value: "#ffffff"
+            },
+            _iconColor:{
+                notify: true,
+                type: String,
+                value: '#a0a0a0',
+                observer: "updateVisibility"
+            },
+            _resizeCornerColor:{
+                notify: true,
+                type: String,
+                value: '#222222',
+                observer: "updateVisibility"
+            },
+            _arrowStyle:{
+                notify: true,
+                type: String,
+                value: '',
+                observer: "updateVisibility"
+            },
+            _pinIcon:{
+                notify: true,
+                type: String,
+                value: 'lock',
+                observer: "updateVisibility"
+            },
+            _isInDesigner: {
+                type: Boolean,
+                value: false,
+                notify: true
+            }
+
+        },
+        /**
+         * Set the z-depth of the shadow. This should be used after element
+         * creation instead of setting the z property directly.
+         *
+         * @method elevationChanged
+         * @param {number} oldValue,newValue
+         */
+        elevationChanged: function(newValue,oldValue){
+			var shadowBottom = this.$['shadow-bottom'];
+			var shadowTop = this.$['shadow-top'];
+            if (oldValue) {
+				if (shadowBottom) {
+                	shadowBottom.classList.remove('paper-material-bottom-z-' + oldValue);
+				}
+				if (shadowTop) {
+					shadowTop.classList.remove('paper-material-top-z-' + oldValue);
+				}
+            }
+            if (newValue) {
+				if (shadowBottom){
+                	shadowBottom.classList.add('paper-material-bottom-z-' + newValue);
+				}
+				if (shadowTop) {
+                	shadowTop.classList.add('paper-material-top-z-' + newValue);
+				}
+            }
+        },
+        _autoScrollChanged : function()
+        {
+            this.style.overflow = this._autoScroll == true ? "auto" : "initial";
+        },
+        getElement : function()
+        {
+            return this;
+        },
+        _inDesigner: function(){
+            var result = false;
+            if ((window.parent)&&(window.parent.document) && window.parent.document.querySelector('#designer')){
+                result = true;
+            } else {
+                result = false;
+            }
+            return result;
+        },
+
+        applyPropertyBinding: function (event, detail) {
+            var designer = null;
+            if ((window.parent)&&(window.parent.document)){
+                designer = Polymer.dom(window.parent.document).querySelector('#designer');
+            }
+            if (designer) {
+                this.designer.applyPropertyBinding(
+                        detail.obj, detail.name, detail.path);
+            }
+        },
+        pinChanged: function(){
+            if (this.hasAttribute('pin')) {
+                this._pinIcon = "lock";
+                if (this.parentElement){
+                    if (this.parentElement.hasAttribute('layout')){
+                        this._arrowStyle = "";
+                    } else {
+                        this._arrowStyle = "display:none";
+                    }
+                }
+                if ((this.$) &&  (this.$.pinIcon)) {
+                    this.$.pinIcon.title = "click to unpin (enable dragging)";
+                }
+            } else {
+                this._pinIcon = "lock-open";
+                this._arrowStyle = "display:none";
+                if ((this.$) &&  (this.$.pinIcon)) {
+                    this.$.pinIcon.title = "click to pin (disable dragging)";
+                }
+            }
+        },
+        togglePin: function(event) {
+            // remove any pin attributes from the selected items
+            if (this.attributes.getNamedItem('pin') !== null) {
+                this.removeAttribute('pin');
+            } else {
+                this.setAttribute('pin', "");
+            }
+            this.pinChanged();
+        },
+        editProperties: function(event){
+            if (!this._isInDesigner) return;
+            console.log('request to edit container received');
+            var designer = window.parent.document.querySelector('#designer');
+            var propertiesDialog = designer.$.propertiesDialog;
+            if (!propertiesDialog) return;
+
+            if (this.id === 'helpButtonInfo'){
+                propertiesDialog.selected = this.offsetParent;
+            } else {
+                propertiesDialog.selected = this;
+            }
+            propertiesDialog.open();
+        },
+        moveLeft: function(event){
+            if ((window.parent) && (window.parent.document)) {
+                window.parent.document.dispatchEvent(new CustomEvent("ti-tile-moveleft", {"detail": this.id}));
+            }
+        },
+        moveRight: function(event){
+            if ((window.parent) && (window.parent.document)) {
+                window.parent.document.dispatchEvent(new CustomEvent("ti-tile-moveright", {"detail": this.id}));
+            }
+        },
+        updateVisibility : function()
+        {
+            if ((!this._isInDesigner)||(this.id === 'helpButtonInfo') || (this.id === 'readmeText')) {
+                var show = this.visible !== false && this.visible !== "false";
+                var element = this.getElement();
+                if (element) {
+                    element.style.display = show ? "" : "none";
+                }
+                this.style.visibility = show ? "visible" : "hidden";
+            }
+        },
+        visibleChanged : function()
+        {
+            if (this.nonvisible === this.visible)
+            {
+                this.nonvisible = !this.visible;
+                this.updateVisibility();
+            }
+        },
+        nonvisibleChanged : function()
+        {
+            if (this.nonvisible === this.visible)
+            {
+                this.visible = !this.nonvisible;
+                this.updateVisibility();
+            }
+        },
+        _getTitleStyle: function(titleStyle){
+
+            return titleStyle;
+        },
+        _getDecoratedLabelStyle: function(fontColor,fontSize,fontWeight,textDecoration){
+            var result = "color:"+fontColor+";font-size:"+fontSize+";font-weight:"+fontWeight+";text-decoration:"+textDecoration+";";
+            return result;
+        },
+        _getIconStyle: function(color){
+            var result = "color:"+color+";";
+            if (!this._isInDesigner){
+                result = "display:none;";
+            }
+            return result;
+        },
+        _getArrowStyle: function(displayStyle,color){
+            var result = "color:"+color+";"+displayStyle;
+            if (!this._isInDesigner){
+                result = "display:none;";
+            }
+            return result;
+        },
+        attached: function() {
+            this.async(function(){
+                this._resizeCtr = 1;
+                this._titleFontWeight = 'bold';
+                this._isInDesigner = this._inDesigner();
+                this.pinChanged();
+                if (this.attributes.getNamedItem('openPropertyEditor') !== null) {
+                    this.removeAttribute('openPropertyEditor');
+                    this.editProperties();
+                }
+            }.bind(this),1);
+        }
+
+    };
+</script>

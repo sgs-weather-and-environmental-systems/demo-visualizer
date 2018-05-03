@@ -1,0 +1,1145 @@
+<!--
+    Copyright (c) 2014, Texas Instruments Incorporated
+    All rights reserved.
+
+    Redistribution and use in source and binary forms, with or without
+    modification, are permitted provided that the following conditions
+    are met:
+
+    *   Redistributions of source code must retain the above copyright
+    notice, this list of conditions and the following disclaimer.
+    notice, this list of conditions and the following disclaimer in the
+    documentation and/or other materials provided with the distribution.
+    *   Neither the name of Texas Instruments Incorporated nor the names of
+    its contributors may be used to endorse or promote products derived
+    from this software without specific prior written permission.
+
+    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+    AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+    THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+    PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+    CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+    EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+    PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+    OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+    WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+    OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+    EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+-->
+<link rel="import" href="../polymer/polymer.html">
+<link rel="import" href="../ti-core-backplane/ti-core-backplane.html">
+<link rel="import" href="../ti-service-usbhid/ti-service-usbhid-dialog.html">
+<link rel="import" href="../paper-toast/paper-toast.html">
+<link rel="import" href="../iron-icons/iron-icons.html">
+<link rel="import" href="../iron-icon/iron-icon.html">
+<link rel="import" href="../ti-core-assets/ti-core-assets.html">
+
+<!--
+`ti-service-usbhid`
+
+Example:
+<head>
+...
+    <link rel="import" href="../polymer/polymer.html">
+    <link rel="import" href="../ti-core-backplane/ti-core-backplane.html">
+    <link rel="import" href="../ti-service-usbhid/ti-service-usbhid.html">
+</head>
+<body unresolved>
+...
+    <ti-core-backplane id="guicomposer_backplane" statusChanged="myStatusChangedHdlr()" ></ti-core-backplane>
+    <ti-service-usbhid id="guicomposer_usbhid" backplane="backplane"></ti-service-usbhid>
+ ...
+<script>
+...
+    var backplane;
+    var usbHidService;
+    addEventListener('WebComponentsReady', function() {
+	  backplane = gc.services['ti-core-backplane'];
+      usbHidService = gc.services['ti-service-usbhid'];
+    }
+</script>
+</body>
+
+
+Use `comport` to specify the name of the usbhid communications port to use.  Default is auto-selected.
+
+Example:
+
+    <ti-service-usbhid></ti-service-usbhid>
+
+
+
+@group Ti Elements
+@element ti-service-usbhid
+@demo demo.html
+@homepage ../ti-guicomposer-helpindex/demo.html
+-->
+
+<dom-module id='ti-service-usbhid'  >
+    <template>
+        <style>
+            :host {
+                display: block;
+                width: 175px;
+                height: 175px;
+            }
+            paper-toast {
+                bottom: 33px;
+                left: 0;
+                width: 100%;
+                max-height: 100px;
+            }
+        </style>
+        <paper-toast id="toast" text="No Texas Instrument USB-HID Ports Detected. Please check your USB connections."  on-click="hideToast" duration="12000"><div style="float:right;"><iron-icon icon="close" style="margin:0;padding:0;"></iron-icon></div></paper-toast>
+        <ti-core-backplane id=backplane></ti-core-backplane>
+
+    </template>
+    <script>
+        var gc = gc || {};
+        (function() {
+            var usbHidPortRegistry = {};
+            var usbHidServiceInstances = [];
+            Polymer ({
+                is: 'ti-service-usbhid',
+                _self: undefined,
+                initComplete: false,
+                agent: undefined,
+                rxDataCount: 0,
+                myTimeout: null,
+                numBadValues: 0,
+                numDataWaitingTimeouts: 0,
+                hasOpenUsbHidPortBeenCalled: false,
+                pendingDataToSend: null,
+                usbHidPortSelectionComplete: false,
+                basicWaitingMsg: undefined,
+                msgWaitingForData: undefined,
+                dataFromUsbHidPort: [],
+                states: [  // http://lamehacks.net/blog/implementing-a-state-machine-in-javascript/
+
+                    {
+                        'name': 'disconnected',
+                        'statusString': '',
+                        'waitForUser': true,
+                        'skip': false,
+                        'events': {
+                            'gotoNextState': 'backplaneReady',
+                            'backplane_ready': 'backplaneReady',
+                            'backplane_connectionFailed': 'disconnected',
+                            'backplane_disconnected': 'disconnected'
+                        }
+                    },
+					{
+                        'name': 'backplaneReady',
+                        'statusString': '',
+                        'waitForUser': false,
+                        'skip': false,
+                        'events': {
+                            'gotoNextState': 'findingUsbHidPorts',
+                            'agentReady': 'findingUsbHidPorts',
+                            'backplane_disconnect': 'disconnected',
+                            'backplane_disconnected': 'disconnected',
+                            'backplane_downloadTICloudAgent': 'disconnected'
+
+                        }
+                    },
+                    {
+                        'name': 'findingUsbHidPorts',
+                        'statusString': 'Scanning for usbhid ports...',
+                        'waitForUser': false,
+                        'skip': false,
+                        'events': {
+                            'gotoNextState': 'usbHidPortReady',
+                            'onPortFound': 'usbHidPortReady',
+                            'onUsbHidPortError': 'waitForDeviceToBePluggedIn',
+                            'onDebugServerError': 'waitForDeviceToBePluggedIn',
+                            'userCloseUsbHidPort': 'closeUsbHidPort',
+                            'backplane_connectionFailed': 'disconnected',
+                            'backplane_disconnect': 'disconnected',
+                            'backplane_disconnected': 'disconnected'
+                        }
+                    },
+
+                    {
+                        'name': 'waitForDeviceToBePluggedIn',
+                        'statusString': '',
+                        'waitForUser': true,
+                        'skip': false,
+                        'events': {
+                            'gotoNextState': 'disconnected',
+                            //'onPortFound': 'waitForDeviceToBePluggedIn',
+                            'onUsbHidPortError': 'waitForDeviceToBePluggedIn',
+                            'onPortFound': 'usbHidPortReady',
+                            'disconnect':'disconnect',
+                            'onUserSaysDevicePluggedIn': 'disconnected',
+                            'backplane_connectionFailed': 'disconnected',
+                            'backplane_disconnect': 'disconnected',
+                            'backplane_disconnected': 'disconnected'
+                        }
+                    },
+                    {
+                        'name': 'usbHidPortReady',
+                        'statusString': 'USB-HID Port Ready to be opened',
+                        'waitForUser': true,
+                        'skip': false,
+                        'events': {
+                            'gotoNextState': 'openUsbHidPort',
+                            'userOpenUsbHidPort': 'openUsbHidPort',
+                            'userChangeUsbHidPort': 'openUsbHidPort',
+                            'userCloseUsbHidPort': 'closeUsbHidPort',
+                            'onPortOpen': 'running',
+                            'onUsbHidPortError': 'waitForDeviceToBePluggedIn',
+                            'backplane_connectionFailed': 'disconnected',
+                            'backplane_disconnect': 'disconnected',
+                            'backplane_disconnected': 'disconnected'
+                        }
+                    },
+                    {
+                        'name': 'openUsbHidPort',
+                        'statusString': 'Opening USB-HID Port...',
+                        'waitForUser': true,
+                        'skip': false,
+                        'events': {
+                            'gotoNextState': 'running',
+                            'onPortOpen': 'running',
+                            'userCloseUsbHidPort': 'closeUsbHidPort',
+                            'userChangeUsbHidPort': 'changeUsbHidPort',
+                            'onUsbHidPortError': 'waitForDeviceToBePluggedIn',
+                            'backplane_connectionFailed': 'disconnected',
+                            'backplane_disconnect': 'disconnected',
+                            'backplane_disconnected': 'disconnected'
+                        }
+                    },
+                    {
+                        'name': 'running',
+                        'statusString': "USB-HID Port Open.",
+                        'waitForUser': false,
+                        'skip': false,
+                        'events': {
+                            'gotoNextState': 'running',
+                            'onDataReady': 'running',
+                            'onPortClosed': 'findingUsbHidPorts',
+                            'userCloseUsbHidPort': 'closeUsbHidPort',
+                            'userChangeUsbHidPort': 'changeUsbHidPort',
+                            'backplane_connectionFailed': 'disconnected',
+                            'backplane_disconnect': 'disconnected',
+                            'backplane_disconnected': 'disconnected'
+                        }
+                    },
+                    {
+                        'name': 'closeUsbHidPort',
+                        'statusString': 'Closing USB-HID Port...',
+                        'waitForUser': false,
+                        'skip': false,
+                        'events': {
+                            'gotoNextState': 'disconnect',
+                            'onPortClosed': 'disconnect',
+                            'onUsbHidPortError': 'waitForDeviceToBePluggedIn',
+                            'userCloseUsbHidPort': 'closeUsbHidPort',
+                            'userChangeUsbHidPort': 'openUsbHidPort',
+                            'userOpenUsbHidPort': 'openUsbHidPort',
+                            'backplane_connectionFailed': 'disconnected',
+                            'backplane_disconnect': 'disconnected',
+                            'backplane_disconnected': 'disconnected'
+                        }
+                    },
+                    {
+                        'name': 'changeUsbHidPort',
+                        'statusString': 'Changing USB-HID Port...',
+                        'waitForUser': false,
+                        'skip': false,
+                        'events': {
+                            'gotoNextState': 'openUsbHidPort',
+                            'onPortClosed': 'usbHidPortReady',
+                            'onUsbHidPortError': 'waitForDeviceToBePluggedIn',
+                            'userCloseUsbHidPort': 'closeUsbHidPort',
+                            'userOpenUsbHidPort': 'openUsbHidPort',
+                            'userChangeUsbHidPort': 'changeUsbHidPort',
+                            'backplane_connectionFailed': 'disconnected',
+                            'backplane_disconnect': 'disconnected',
+                            'backplane_disconnected': 'disconnected'
+                        }
+                    },
+                    {
+                        'name': 'disconnect',
+                        'statusString': 'Disconnect',
+                        'waitForUser': true,
+                        'skip': false,
+                        'events': {
+                            'gotoNextState': 'disconnected',
+                            'disconnectComplete': 'disconnected',
+                            'backplane_connectionFailed': 'disconnected',
+                            'backplane_disconnect': 'disconnected',
+                            'backplane_disconnected': 'disconnected'
+                        }
+                    }
+
+                ],
+                userActions: ['onUserSaysDevicePluggedIn', 'onUsbHidPortSelected'],
+                stateIndexes: {},
+                prevState: undefined,
+                wasTIUsbHidPortFound: false,
+                /**
+                 * Fired when the currentState changes.
+                 *
+                 * @event currentStateChanged
+                 */
+                /**
+                 * Fired when the statusString changes.
+                 *
+                 * @event statusMsgUpdated
+                 */
+                /**
+                 * Fired when the client needs to show a 'unplug device and plug it back in' message.
+                 *
+                 * @event onReplugNeeded
+                 */
+
+                /**
+                 * Fired when the list of available usbhid ports is ready to be displayed
+                 *
+                 * @event usbHidPortListUpdated
+                 */
+                /**
+                 * Fired when the visibility of one of the buttons in the application that is associated
+                 * with ti-service-usbhid needs to be changed
+                 *
+                 * @event usbHidPortUIVisibilityChanged
+                 */
+                /**
+                 * Fired when the USB-HID port discovery process has completed successfully and a USB-HID port
+                 * can be safely opened.  Used by ti-service-programloader to deteremine when to display the
+                 * program download button.
+                 *
+                 * @event usbHidPortsReadyToBeOpened
+                 */
+                /**
+                 * Fired by the onUsbHidPortChangedByUser function to notify components of a change in USB-HID port
+                 * initiated by the user
+                 *
+                 * @event usbHidPortChangedByUser
+                 */
+                /**
+                 * Fired when the selected USB HID port has been opened
+                 *
+                 * @event usbHidPortOpen
+                 */
+                /**
+                 * Fired when the selected USB HID port has been closed
+                 *
+                 * @event usbHidPortClosed
+                 */
+                /**
+                 * Fired when an error has occurred.  See the event.detail object for info and error strings
+                 *
+                 * @event usbHidError
+                 */
+                 hostAttributes: {
+                },
+
+                properties: {
+                    backplane: {
+                        notify: true,
+                        type: String,
+                        value: undefined,
+                        observer: "backplaneChanged"
+                    },
+                    /**
+                     * The current state of this object's internal state machine.
+                     *
+                     * @attribute currentState
+                     * @type string
+                     * @default 'disconnected'
+                     */
+                    currentState: {
+                        notify: true,
+                        type: String,
+                        value: undefined,
+                        observer: "_currentStateChanged"
+                    },
+                    /**
+                     * a string representing the current status of the interactions with the target device.
+                     *
+                     * @attribute status
+                     * @type string
+                     * @default 'Disconnected.'
+                     */
+                    status: {
+                        notify: true,
+                        type: String,
+                        value: ""
+                    },
+
+                    /**
+                     * an array of objects that describe a USB-HID port that is available on the user's computer.
+                     * This array is generated by ti-service-usbhid, and can be displayed in a select box drop-down list
+                     * to allow the user to specify the COM Port that they wish to use to connect to the target with.
+                     *
+                     * @attribute usbHidPorts
+                     * @type object
+                     * @default undefined
+                     */
+                    usbHidPorts: {
+                        notify: true,
+                        type: Object,
+                        value: undefined
+                    },
+                    /**
+                     * The object from the usbHidPorts array that represents the COM Port that is
+                     * to be used for usbhid communication with the target.  After initialization, this
+                     * is set by ti-service-usbhid to the default COM port to be used for communication
+                     * unless the user specifies otherwise (typically the COM port with manufacturer =
+                     * Texas Instruments and, if multiple ports, a pnpId string ending with 0002)
+                     *
+                     * @attribute selectedUsbHidPort
+                     * @type object
+                     * @default undefined
+                     */
+                    selectedUsbHidPort: {
+                        notify: true,
+                        type: Object,
+                        value: undefined,
+                        observer: "selectedUsbHidPortChanged"
+                    },
+                    /**
+                     *  The vendorIdFilter is used by the low-level node-hid module to specify which USB-HID ports to
+                     * include in the list of available ports.  This is currently restricted to the vendorId for
+                     * Texas Instruments (8263).
+                     *
+                     * @attribute vendorIdFilter
+                     * @type Number
+                     * @default 8263
+                     */
+                    vendorIdFilter: {
+                        type: Number,
+                        value: 8263
+                    },
+                    /**
+                     * The function handler that is to be called by ti-service-usbhid when it receives
+                     * binary data over the USB-HID port from the target.  This must be set by the application
+                     * code in order to receive and work with received USB-HID port data.
+                     *
+                     * @attribute usbHidPortDataOutputHdlr
+                     * @type function
+                     * @default undefined
+                     */
+                    usbHidPortDataOutputHdlr: {
+                        notify: true,
+                        type: Function,
+                        value: undefined
+                    },
+                    /**
+                     * retry timeout in ms after which the usb-hid port will be automatically closed and re-opened
+                     * by the TiCloudAgentHostApp module.  Set to 0 for no timeout (e.g. for USB2ANY)
+                     *
+                     * @attribute msTimeout
+                     * @type number
+                     * @default 0
+                     */
+                    msTimeout: {
+                        notify: true,
+                        type: Number,
+                        value: 0
+                    },
+                    /**
+                     * The function handler used by ti-usbhid-model that is to be called by ti-service-usbhid
+                     * when it receives text data over the USB-HID port from the target.
+                     *
+                     * @attribute usbHidModelOutputHdlr
+                     * @type function
+                     * @default undefined
+                     */
+                    usbHidModelOutputHdlr: {
+                        notify: true,
+                        type: Function,
+                        value: undefined
+                    },
+                    /**
+                     * isUsbHidPortUIVisible indicates whether GUI elements associated with selecting and displaying
+                     * the COM port to use should be displayed or not.  Read in response to the usbHidPortUIVisibilityChanged
+                     * event being fired.
+                     *
+                     * @attribute isUsbHidPortUIVisible
+                     * @type boolean
+                     * @default false
+                     */
+                    isUsbHidPortUIVisible: {
+                        notify: true,
+                        type: Boolean,
+                        value: false
+                    },
+
+                    modelId: {
+                        notify: false,
+                        type: String,
+                        value: undefined
+                    }
+
+                },
+                _backplaneCurrentStateChangedHdlr: function(e) {
+                    console.log('ti-service-usbhid: backplaneCurrentState changed to ' + e.target.currentState.name);
+                    this.updateStateMachine('backplane_' + e.target.currentState.name);
+                },
+                backplaneCurrentStateChangedHdlr: undefined,
+                _backplaneConnectionStatusChangedHdlr: function(e) {
+                    console.log('ti-service-usbhid: backplaneConnectionState changed .isConnectedToCloudAgent=' + e.target.isConnectedToCloudAgent);
+
+                },
+                backplaneConnectionStatusChangedHdlr: undefined,
+                _backplaneBtnVisibilityChangedHdlr: function(e) {
+                    if (e.target.isDisconnectBtnVisible) {
+                        this.isReplugNoticeVisible = false;
+                    }
+                },
+                backplaneBtnVisibilityChangedHdlr: undefined,
+                backplaneChanged: function(newBackplane,oldBackplane) {
+                    if ((oldBackplane !== undefined) && (oldBackplane !== null) && (oldBackplane.removeEventListener)) {
+                        oldBackplane.removeEventListener("currentStateUpdated", this.backplaneCurrentStateChangedHdlr);
+                        oldBackplane.removeEventListener("connectionStatusChanged", this.backplaneCurrentStateChangedHdlr);
+                        oldBackplane.removeEventListener("btnVisibilityChanged", this.backplaneCurrentStateChangedHdlr);
+                    }
+                    if ((this.backplane !== undefined) && (this.backplane.addEventListener)) {
+                        this.backplane.addEventListener("currentStateUpdated", this.backplaneCurrentStateChangedHdlr);
+                        this.backplane.addEventListener("connectionStatusChanged", this.backplaneCurrentStateChangedHdlr);
+                        this.backplane.addEventListener("btnVisibilityChanged", this.backplaneCurrentStateChangedHdlr);
+                        if (this.backplane.currentState !== undefined) {
+                            console.log('ti-service-usbhid: backplane event handlers initialized. backplane.currentState.name=' + this.backplane.currentState.name);
+                        }
+                    }
+                    this.fire('backplaneChanged');
+                },
+                selectedUsbHidPortChanged: function() {
+                    if (this.selectedUsbHidPort) {
+                        console.log('selectedUsbHidPortChanged: new COM Port = ' + this.selectedUsbHidPort.comName);
+                        if ((this.usbHidPorts !== undefined) && (this.usbHidPorts !== null) && (this.usbHidPorts.length > 0)) {
+                            for (var i = 0; i < this.usbHidPorts.length; ++i) {
+                                if (this.usbHidPorts[i].comName == this.selectedUsbHidPort.comName) {
+                                    this.usbHidPorts[i].selected = true;
+                                } else {
+                                    this.usbHidPorts[i].selected = false;
+                                }
+                            }
+                        }
+                    }
+                },
+                // onUsbHidPortChangedByUser is called by the usbhid dialog after it has set the selectedUsbHidPort
+                _onUsbHidPortChangedByUser: function(){
+                    // persist the user-selected comPort for use next time.
+                    if (localStorage) {
+                        var projectName = gc.fileCache.getProjectName();
+                        var keyPrefix = projectName+'_';
+                        localStorage[keyPrefix+'_usbHidPort'] = this.selectedUsbHidPort.comName;
+                    }
+                    this.fire('usbHidPortChangedByUser')
+                },
+                onUsbHidPortChangedByUser: undefined,
+                _setStatus: function(strStatus) {
+                    this.status = strStatus;
+                    this.fire('statusMsgUpdated');
+                },
+                setStatus: undefined,
+                //provided for testing purposes
+                /* returns true if state changed, false otherwise */
+                _updateStateMachine: function(strEventName) {
+                    var result = false;
+                    var origStateName = this.currentState.name;
+                    var newStateName = this.currentState.events[strEventName];
+                    if (newStateName) {
+                        console.log('ti-service-usbhid: updateStateMachine event = ' + strEventName);
+                        if (newStateName !== origStateName) {
+                            this.prevState = this.currentState;
+                            var newIndex = this.stateIndexes[newStateName];
+                            this.currentState = this.states[newIndex];
+                            console.log('ti-service-usbhid: state change from ' + origStateName + ' to ' + newStateName);
+                        }
+                        result = true;
+                    } else {
+                        console.log('OUT OF SEQUENCE updateStateMachine event: ' + strEventName)
+                        console.log(this.currentState.events.length + ' valid event names for state=' + this.currentState.name + ':');
+                        for (var i = 0; i < this.currentState.events.length; i++) {
+                            console.log('event[' + i + ']=' + this.currentState.events[i].name);
+                        }
+                    }
+
+                    return (result);
+                },
+                updateStateMachine: undefined,
+                _currentStateChanged: function() {
+                    if (this.initComplete){
+
+                        console.log('onCurrentStateChanged: currentState.name=' + this.currentState.name);
+                        if ((this.currentState.statusString !== undefined) && (this.currentState.statusString.length > 0)) {
+                            this.setStatus(this.currentState.statusString);
+                        }
+                        console.log('onCurrentStateChanged: status=' + this.status);
+                        this.prevState = this.currentState;
+                        switch (this.currentState.name) {
+                            case 'disconnected':
+                                this.isUsbHidPortUIVisible = false;
+                                this.disconnectFromUsbHidPort();
+                                this.fire('usbHidPortUIVisibilityChanged');
+                                break;
+                            case 'backplaneReady':
+                                if ((this.backplane) && (this.backplane.agent)) {
+                                    this.updateStateMachine('agentReady');
+                                } else {
+                                    console.log("ti-service-usbhid: backplaneReady but backplane.agent is not defined!");
+                                }
+                                break;
+                            case 'findingUsbHidPorts':
+                                this.isReplugNoticeVisible = false;
+                                this.fire('replugNoticeVisibilityChanged');
+                                this.setStatus('Scanning for usbhid ports...');
+                                this.listUsbHidPorts();
+                                break;
+                            case 'usbHidPortReady':
+                                this.isUsbHidPortUIVisible = true;
+                                this.fire('usbHidPortUIVisibilityChanged');
+                                this.fire('usbHidPortsReadyToBeOpened');
+                                break;
+                            case 'openUsbHidPort':
+                                // wait 100 ms between closing a USB-HID port and reopening it again.
+                                if (!this.selectedUsbHidPort){
+                                    this.updateStateMachine('onUsbHidPortError');
+                                } else {
+                                    var waitTm = Math.max(0, 100 - Date.now() + (this._lastTimeUsbHidPortClosed || -100));
+                                    setTimeout(this.connectToUsbHidPort, waitTm);
+                                    this.fire('usbHidPortUIVisibilityChanged');
+                                }
+                                break;
+                            case 'closeUsbHidPort':
+                                this._lastTimeUsbHidPortClosed = Date.now();
+                                this.disconnectFromUsbHidPort();
+                                this.fire('usbHidPortUIVisibilityChanged');
+                                this.updateStateMachine('onPortClosed')
+                                break;
+                            case 'changeUsbHidPort':
+                                this._lastTimeUsbHidPortClosed = Date.now();
+                                this.disconnectFromUsbHidPort();
+                                // when on close event is received, state will change to openUsbHidPort to open the new selected port.
+                                break;
+                            case 'running':
+                                this.setStatus('USB-HID Port Open: '+this.selectedUsbHidPort.comName );
+                                // Delay firing the usbHidPortOpen event (see GC-742)
+                                var _self = this;
+                                this.async(function(){
+                                    _self.fire('usbHidPortOpen');
+                                },50);
+                                break;
+                            case 'waitForDeviceToBePluggedIn':
+                                this.isUsbHidPortUIVisible = false;
+                                this.isReplugNoticeVisible = true;
+                                this.fire('usbHidPortUIVisibilityChanged');
+                                //fire an event to notify the client that they need to show a 'unplug device and plug it back in' message.
+                                var statusStr = this.status;
+
+                                this.backplane.updateStateMachine('onFailedToConnect');
+                                this.backplane.statusString2 = "Please plug your Target Device into your computer's USB port.";
+
+                                this.fire('replugNoticeVisibilityChanged');
+                                //this.updateStateMachine('backplane_disconnected'); // force state machine to close usbhid ports and try again.
+                                break;
+                            case 'disconnect':
+                                this.isUsbHidPortUIVisible = false;
+                                this.fire('usbHidPortUIVisibilityChanged');
+                                this.updateStateMachine('disconnectComplete');
+                                break;
+
+                        }
+
+                        //if (this.currentState.waitForUser) {
+                        this.fire('currentStateUpdated');
+                        //}
+
+                    }
+
+                },
+                currentStateChanged: undefined,
+
+
+                setUserAction: function(e) {
+                    console.log('setUserAction: ' + e);
+                    if (this.currentState.events[e]) {
+                        this.currentState = this.states[this.stateIndexes[this.currentState.events[e]]];
+                        console.log('updated currentState to ' + this.currentState.name);
+                    }
+                },
+                debugPrint: function(str) {
+                    var isDebuggingEnabled = true;
+                    if (isDebuggingEnabled) {
+                        console.log(str);
+                    }
+                },
+                waitForSocketConnection: function(socket, callback) {
+                    setTimeout(
+                        function() {
+                            if (socket.readyState === 1) {
+                                if (callback !== undefined) {
+                                    callback();
+                                }
+                                return;
+                            } else {
+                                // keep waiting if socket is connecting
+                                if (socket.readyState == 0) {
+                                    waitForSocketConnection(socket, callback);
+                                } else {
+                                    //TODO: handle case where socket is closing (2) or closed(3)
+                                    console.log("ERROR: webSocket readyState =" + socket.readyState + ', (2=closing, 3=closed)');
+                                }
+                            }
+                        }, 5);
+                },
+
+                /**
+                 * Open USB-HID port parameters
+                 * @typedef {Object} openSerialParams
+                 * @property {string} comName name of the port to open
+                 */
+
+                /**
+                 * Open a connection to a USB-HID port
+                 * @param output console output object
+                 * @param serialRxMsgHdlr USB-HID port read output object. Only messages from the USB-HID port are re-directed here.
+                 * @param {openSerialParams} portInfo
+                 * @param onOpenCallback callback to be called when USB-HID port opened.  Takes 3 params: error, serialTxMsgHdlr
+                 * @function
+                 */
+                _openUsbHidPort: function(output, serialRxMsgHdlr, portInfo, onOpenCallback) {
+                    // decorate the paramaters to pass along
+                    portInfo.command = "usbhid.open";
+                    this.serialRxMsgHdlr = serialRxMsgHdlr;  //bc NEW - persist callback function handle
+                    var dataReceived = false;
+                    var _self = this;
+                    //this.usbhid.open(output,serialRxMsgHdlr, portInfo, onOpenCallback);
+                    this.usbhid.addListener("serialout", serialRxMsgHdlr);
+                    var enableLowLevelLogging = false;
+                    this.usbhid.open(portInfo, this.msTimeout, this.vendorIdFilter, enableLowLevelLogging).then(function(){
+
+                        // BC: TODO: hook in tx message handler somehow - see agent.js line 848 typeerror object is not a function event dispatch.
+                        onOpenCallback();
+                    });
+
+                },
+                openUsbHidPort: undefined,
+                usbhid: undefined,
+                _listUsbHidPorts: function(rescanPorts, vendorIdFilter) {
+                    var thisObj = this;
+                    var _self = this;
+                    var ports;
+                    this.agent = this.backplane && this.backplane.agent;
+                    // Always get the user to unplug and then plug in their board in order to ensure
+                    // the device's debugger is in a good / known state.
+
+                    if ((this.agent === undefined) || (this.agent === null)){
+                        this.setStatus('Failed to get agent.');
+                        if (this.backplane) {
+                            this.backplane.reset();
+                        }
+                        this.updateStateMachine('onDebugServerError');
+                        return;
+                    }
+                    console.log("ti-service-usbhid: about to call this.agent.getSubModule(USB-HID).");
+                    this.agent.getSubModule("USB-HID").then(function (usbhid1) {
+                        _self.usbhid = usbhid1;
+                        _self.usbhid.list().then(function (retObj) {
+                                ports = retObj.ports;
+                                _self.usbHidPorts = ports;
+                                var result = false;
+                                if ((ports) && (ports.length > 0)){
+                                    for (var i=0; i < ports.length; i++){
+                                        ports[i].selected = false;
+                                    }
+                                    ports[0].selected = true;
+                                    result = true;
+                                }
+                                return result;
+                            }
+                        ).then(function(found) {
+                            _self.wasTIUsbHidPortFound = found;
+
+                            var usbHidPortSelected = false;
+                            if ((rescanPorts === undefined)||(!rescanPorts)) {
+                                var previousPortSelection = null;
+                                if (_self.selectedUsbHidPort) {
+                                    previousPortSelection = _self.selectedUsbHidPort.comName;
+                                }
+                                for (var i=0;i<_self.usbHidPorts.length;i++){
+                                    if (_self.usbHidPorts[i].comName === previousPortSelection){
+                                        _self.selectedUsbHidPort = _self.usbHidPorts[i];
+                                        _self.selectedUsbHidPortChanged(); // force the new port to be 'selected' and unselect all others
+                                        usbHidPortSelected = true;
+                                        console.log("ti-service-usbhid: using previous port selections: "+_self.selectedUsbHidPort.comName);
+                                        break;
+                                    }
+                                }
+                            }
+                            if (!usbHidPortSelected) {
+
+                                // select the port to open
+                                for (var j = 0; j < ports.length; j++) {
+                                    var port = ports[j];
+                                    if (port.selected) {
+
+                                        if (rescanPorts === undefined) {
+                                            _self.selectedUsbHidPort = port;
+                                        }
+                                        portInfo = port;
+                                        break;
+                                    }
+                                }
+                            }
+                            if (!_self.wasTIUsbHidPortFound){
+                                _self.$.toast.opened = true;
+                            }
+
+                            if (rescanPorts === undefined) {
+                                _self.usbHidPortSelectionComplete = true;
+                                _self.onUsbHidPortSelected(true);
+                            } else {
+                                _self.fire('usbHidPortListUpdated');
+                            }
+
+                        }).fail(function (error) {
+                            _self._logErrorMsg('ti-service-usbhid.listUsbHidPorts: error=',error);
+                            _self.onUsbHidPortListReady(error,null);
+                        });
+
+                    }).fail(function (error) {
+                        _self._logErrorMsg('ti-service-usbhid.listUsbHidPorts: failed: error.message=',error);
+                        _self.onUsbHidPortError(error.message);
+                        if (rescanPorts === undefined) {
+                            _self.updateStateMachine('backplane_disconnect');
+                        }
+                    });
+
+                },
+                listUsbHidPorts: undefined,
+
+                _onUsbHidPortListError: function(error, htmlText) {
+                    this.setStatus(htmlText);
+                    if (error) {
+                        console.log('ti-service-usbhid.onUsbHidPortListError: error='+error);
+                        this.updateStateMachine('onUsbHidPortError');
+                    }
+                },
+                onUsbHidPortListError: undefined,
+                _onUsbHidPortListReady: function(error, usbHidPortInfo) {
+                    if ((error) || (usbHidPortInfo === undefined) || (usbHidPortInfo === null) || (usbHidPortInfo.ports.length <= 0)) {
+
+                        if (error) {
+                            console.log('listUsbHidPorts.onUsbHidPortListReady: error=' + error);
+                        }
+                        this.setStatus("Error: no usbhid ports found connected to your computer.  Please check your USB connections.");
+                        this.updateStateMachine('onUsbHidPortError');
+                    }
+                },
+                onUsbHidPortListReady: undefined,
+                _onUsbHidPortSelected: function(foundPort) {
+                    if (!foundPort) {
+                        this.setStatus("Please connect your target device to a USB port of your computer.");
+                        this.updateStateMachine('onUsbHidPortError');
+                    } else {
+                        this.setStatus("Connected.");
+                        for (var i = 0; i < this.usbHidPorts.length; i++) {
+                            if (this.usbHidPorts[i].selected) {
+                                this.selectedUsbHidPort = this.usbHidPorts[i];
+                                break;
+                            }
+                        }
+                        this.updateStateMachine('onPortFound');
+
+                        this.isUsbHidPortUIVisible = true;
+                        this.fire('usbHidPortUIVisibilityChanged');
+                        this.fire('usbHidPortListUpdated');
+                    }
+
+                },
+                onUsbHidPortSelected: undefined,
+                _logErrorMsg: function(info,error){
+                    var errStr = "";
+                    if (error) {
+                        errStr = error;
+                        if ((error.message) && (err.message.length > 0)) {
+                            errStr = error.message;
+                        }
+                        if ((error.name) && (error.name.length > 0)) {
+                            errStr = error.name;
+                        }
+                        if ((error.msg) && (error.msg.length > 0)) {
+                            errStr = errStr + ": message = " + error.msg;
+                        }
+                    }
+                    this.fire("usbHidError",{info: info, error: error});
+                    console.log(info+msg);
+                },
+                _usbHidPortOutputListener: function(eventObj){
+                    if (this.myTimeout !== null) {
+                        window.clearTimeout(this.myTimeout);
+                        this.myTimeout = null;
+                    }
+
+                    this.rxDataCount++;
+                    if (this.rxDataCount === 1) {
+                        if (eventObj) {
+                            if (eventObj.portInfo) {
+                                console.log('ti-service-usbhid: eventObj.portInfo.comName = ' + eventObj.portInfo.comName);
+                            }
+                            if (eventObj.buffer) {
+                                console.log('ti-service-usbhid: eventObj.buffer.length = ' + eventObj.buffer.length);
+                            }
+                        }
+                        console.log("ti-service-usbhid: receiving USB-HID data!");
+                    }
+
+                    if (this.usbHidPortDataOutputHdlr && this.usbHidPortDataOutputHdlr.data){
+                        this.usbHidPortDataOutputHdlr.data(eventObj.buffer);
+                    }
+                    if (this.usbHidModelOutputHdlr && this.usbHidModelOutputHdlr.data){
+                        this.usbHidModelOutputHdlr.data(eventObj.buffer);
+                    }
+                },
+                usbHidPortOutputListener: undefined,
+                isListeningToUsbHidPortOutput: false,
+                _reopenUsbHidPort: function() {
+                    this.disconnectFromUsbHidPort();
+                    // wait 100 ms between closing a USB-HID port and reopening it again.
+                    setTimeout(this.connectToUsbHidPort, 100);
+                },
+                reopenUsbHidPort: undefined,
+                _connectToUsbHidPort: function() {
+                    if (this.hasOpenUsbHidPortBeenCalled)  return;
+                    this.hasOpenUsbHidPortBeenCalled = true;
+                    var _self = this;
+                    if ((this.selectedUsbHidPort) && (this.selectedUsbHidPort.comName)) {
+                        this.setStatus('Connecting to USB-HID port ' + this.selectedUsbHidPort.comName + '...');
+                    } else {
+                        console.log("ti-service-usbhid.connectToUsbHidPort: aborting attempt to open selectedUsbHidPort = "+this.selectedUsbHidPort);
+                        return;
+                    }
+
+                    var consoleOutput = {
+                        _text: function (message) {
+                            console.log('ti-service-usbhid console output='+message);
+                            _self.setStatus(message);
+                        },
+                        text: undefined
+                    };
+                    consoleOutput.text = consoleOutput._text.bind(this);
+                    this.usbhid.open(_self.selectedUsbHidPort).then(function(portInfoRetObj) {
+
+                        _self.usbhid.addListener("serialout", _self.usbHidPortOutputListener);
+                        _self.isListeningToUsbHidPortOutput = true;
+
+                        console.log("USB-HID Port Opened Successfully");
+                        // Note: there is no gc.connectionManager for the ti-service-usbhid demo or for situations where there
+                        // is no model.
+                        if  ((gc) && (gc.connectionManager) && (gc.connectionManager.setConnectionMessage)) {
+                            gc.connectionManager.setConnectionMessage(_self.modelId, _self.selectedUsbHidPort.comName);
+                        }
+
+
+                        _self.usbHidSend = function (bufferToSendToTarget) {
+                            if (bufferToSendToTarget) {
+                                //console.log('ti-service-usbhid: usbHidSend called. bufferToSendToTarget.length' + bufferToSendToTarget.length);
+                                _self.usbhid.write(portInfoRetObj, bufferToSendToTarget);
+                            }
+                        };
+
+                        _self.closeUsbHidPort = function () {
+                            console.log('closeUsbHidPort called.');
+                            if (_self.myTimeout !== null) {
+                                window.clearTimeout(this.myTimeout);
+                                _self.myTimeout = null;
+                            }
+                            if (_self.isListeningToUsbHidPortOutput) {
+                                _self.isListeningToUsbHidPortOutput = false;
+                                _self.usbhid.removeListener("serialout",_self.usbHidPortOutputListener);
+                                _self.usbhid.closePort(portInfoRetObj).then(function() {
+                                    console.log("closeUsbHidPort: successful.");
+                                    if ((_self.backplane !== undefined) && (_self.backplane !== null) && (_self.selectedUsbHidPort) &&
+                                        (_self.backplane.statusString1.indexOf(_self.selectedUsbHidPort.comName)>=0)) {
+                                        _self.backplane.statusString1 = "USB-HID Port Closed.";
+                                        _self.backplane.restoreIcon();
+                                    }
+                                    _self.setStatus("USB-HID Port Closed.");
+                                    _self.updateStateMachine('onPortClosed');
+                                    _self.fire('usbHidPortUIVisibilityChanged');
+                                    _self.fire('usbHidPortClosed');
+                                }).fail(function(error){
+                                    _self._logErrorMsg('Failed to close USB-HID port: error = ',error);
+                                });
+
+                            } else {
+                                console.log('closeUsbHidPort found usbHidPortOutputListener === undefined.');
+                            }
+                        };
+
+                        _self.updateStateMachine('onPortOpen');
+
+                    }).fail(function(error){
+                        if (error) {
+                            var errStr = error.message;
+                            if ((error.name)&&(error.name.length > 0)){
+                                errStr = error.name + ":" + errStr;
+                            }
+                            if ((error.msg) && (error.msg.length > 0)){
+                                errStr = errStr + ": message = "+error.msg;
+                            }
+                            _self._logErrorMsg("openUsbHidPort error: ",errStr);
+                            _self.setStatus("openUsbHidPort error: " + errStr);
+                            if ((_self.backplane !== undefined)&&(_self.backplane !== null)) {
+                                _self.backplane.statusString1 = errStr;
+                                _self.backplane.setIcon("error");
+                            }
+                            _self.hasOpenUsbHidPortBeenCalled = false;
+                        }
+                    });
+                }
+                ,
+                connectToUsbHidPort: undefined,
+                _disconnectFromUsbHidPort: function() {
+                    this.hasOpenUsbHidPortBeenCalled = false;
+                    if (this.activeUsbHidPortTxMsgHdlr !== undefined) {
+                        this.activeUsbHidPortTxMsgHdlr.close();
+                    } else {
+                        console.log('closeUsbHidPort found activeUsbHidPort === undefined.');
+                    }
+                    if (this.closeUsbHidPort !== undefined) {
+                        this.closeUsbHidPort();
+                    }
+                    this.setStatus("USB-HID Port Closed.");
+                    if ((this.backplane !== undefined)&&(this.backplane !== null)) {
+                        this.backplane.restoreIcon();
+                    }
+                },
+                disconnectFromUsbHidPort: undefined,
+                hideToast: function(){
+                    this.$.toast.opened = false;
+                },
+                created: function() {
+                    this.usbHidPortOutputListener = this._usbHidPortOutputListener.bind(this);
+                    this.setStatus = this._setStatus.bind(this);
+                    this.updateStateMachine = this._updateStateMachine.bind(this);
+                    this.currentStateChanged = this._currentStateChanged.bind(this);
+                    this.listUsbHidPorts = this._listUsbHidPorts.bind(this);
+                    this.openUsbHidPort = this._openUsbHidPort.bind(this);
+                    this.connectToUsbHidPort = this._connectToUsbHidPort.bind(this);
+                    this.disconnectFromUsbHidPort = this._disconnectFromUsbHidPort.bind(this);
+                    this.reopenUsbHidPort = this._reopenUsbHidPort.bind(this);
+                    this.backplaneCurrentStateChangedHdlr = this._backplaneCurrentStateChangedHdlr.bind(this);
+                    this.backplaneConnectionStatusChangedHdlr = this._backplaneConnectionStatusChangedHdlr.bind(this);
+                    this.backplaneBtnVisibilityChangedHdlr = this._backplaneBtnVisibilityChangedHdlr.bind(this);
+                    this.onUsbHidPortListReady = this._onUsbHidPortListReady.bind(this);
+                    this.onUsbHidPortListError = this._onUsbHidPortListError.bind(this);
+                    this.onUsbHidPortSelected = this._onUsbHidPortSelected.bind(this);
+                    this.onUsbHidPortChangedByUser = this._onUsbHidPortChangedByUser.bind(this);
+                    this.changeUsbHidPortOptions = this._changeUsbHidPortOptions.bind(this);
+                    this.changeUsbHidPort = this._changeUsbHidPort.bind(this);
+                },
+                ready: function() {
+                    this.enteredView();
+                },
+
+                // see https://groups.google.com/forum/#!searchin/polymer-dev/binding/polymer-dev/wzfxU9vVAg0/1sFyrmnxy5EJ for info on why initialization is not
+                // considered complete until either enteredView or created is called
+                enteredView: function() {
+                    this._self = this;
+
+                    this.stateIndexes = {};
+                    for (var i = 0; i < this.states.length; i++) {
+                        this.stateIndexes[this.states[i].name] = i;
+                    }
+                    this.currentState = this.states[0];
+                    this.prevState = this.currentState;
+
+                    this.numBadValues = 0;
+                    this.rxDataCount = 0;
+
+                    this.initComplete = true;
+                },
+                domReady: function(){
+                },
+                attached: function() {
+                    gc.services = gc.services || {};
+                    usbHidServiceInstances.push(this);
+                    gc.services['ti-service-usbhid'] = usbHidServiceInstances[0];
+                	this.backplane = this.$.backplane;
+                    this.async(function() {
+                        this.domReady();
+                    }.bind(this),1);
+                },
+                detached: function() {
+                    for(var i = usbHidServiceInstances.length; i--> 0; ) {
+                        if(usbHidServiceInstances[i] === this) {
+                            usbHidServiceInstances.splice(i, 1);
+                        }
+                    }
+                    gc.services['ti-service-usbhid'] = usbHidServiceInstances[0];
+                    this.backplane = undefined;
+                },
+                dialog: undefined,
+                openDialog: function()
+                {
+                    if (this.$) {
+                        if (!this.dialog) {
+                            this.dialog = document.querySelector('ti-service-usbhid-dialog');
+                            if (!this.dialog) {
+                                this.dialog = document.createElement('ti-service-usbhid-dialog');
+                                document.body.appendChild(this.dialog);
+                            }
+                        }
+                        this.dialog.open();
+                    }
+                },
+                findUsbHidPortByName: function(comName) {
+                    for(var i = this.usbHidPorts.length; i-- > 0;  ) {
+                        if (this.usbHidPorts[i].comName === comName) {
+                            return this.usbHidPorts[i];
+                        }
+                    }
+                },
+                getUsbHidPortIndexByName: function(comName) {
+                    for(var i = this.usbHidPorts.length; i-- > 0;  ) {
+                        if (this.usbHidPorts[i].comName === comName) {
+                            return i;
+                        }
+                    }
+                },
+                _changeUsbHidPort: function(comName) {
+                    if (!this.usbHidPorts) return;
+                    var portIndex = this.getUsbHidPortIndexByName(comName);
+                    if (portIndex && (this.selectedUsbHidPort.index !== portIndex))
+                    {
+                        this.selectedUsbHidPort = this.usbHidPorts[portIndex];
+                        // See ti-service-targetaccess for event handling of serialportchangedbyuser event
+                        this.onUsbHidPortChangedByUser();
+
+                        if (this.currentState.name.indexOf("running") === 0) {
+                            this.updateStateMachine('userChangeUsbHidPort');
+                        }
+                        return true;
+                    }
+                    return false
+                },
+                changeUsbHidPort: undefined,
+                _changeUsbHidPortOptions: function(portIndex) {
+                    this.changeUsbHidPort(this.usbHidPorts[portIndex].comName);
+                },
+                changeUsbHidPortOptions: undefined,
+                getAllUsbHidPortInstances: function()
+                {
+                    return usbHidPortRegistry;
+                },
+                registerUsbHidPortInstance: function(id)
+                {
+                    usbHidPortRegistry[id] = this;
+                },
+                unregisterUsbHidPortInstance: function(id)
+                {
+                    usbHidPortRegistry[id] = undefined;
+                }
+            });
+        }());
+
+    </script>
+
+</dom-module>

@@ -1,0 +1,482 @@
+html .sky {
+  font-family: 'Arimo', sans-serif;
+  -ms-text-size-adjust: 100%;
+  -webkit-text-size-adjust: 100%;
+  font-weight: 400;
+  font-size: 14px;
+}
+html .sky .font-special {
+  font-family: 'Arimo', sans-serif;
+}
+html .sky iron-header-panel {
+  height: 100%;
+}
+html .sky iron-header-panel[mode=cover] #mainContainer {
+  left: 70px;
+}
+html .sky .iron-header {
+  height: 60px;
+  font-size: 18px;
+/* Brian: removed: padding: 0 10px; */
+  transition: height 0.2s;
+  background-color: #7ec0ee;
+  color: #fff;
+}
+html .sky .iron-header a {
+  color: #fff;
+}
+html .sky .iron-header paper-item {
+  font-size: 18px;
+}
+html .sky .iron-header.tall {
+  height: 180px;
+}
+html .sky .iron-header.medium-tall {
+  height: 120px;
+}
+html .sky .iron-header iron-menu-button a {
+  color: #444;
+}
+html .sky .wrapper {
+  text-align: center;
+}
+html .sky section {
+  text-align: left;  /* Brian: padding and alignment causes problems for many non-paper components */
+  padding: 0px 0px;
+}
+html .sky .ti-banner {
+  background-color: black;
+}
+html .sky section[hero] {
+  background-color: #f5fcff;
+}
+html .sky h1,
+html .sky h2,
+html .sky h3,
+html .sky h4,
+html .sky h5,
+html .sky h6 {
+  font-weight: 400;
+  margin: 0px;
+  padding: 0px;
+}
+html .sky h1,
+html .sky h3,
+html .sky h5 {
+  font-family: 'Arimo', sans-serif;
+}
+html .sky h1 {
+  color: initial;
+  font-size: 2em;
+  margin: 5px 0px;
+}
+html .sky h2 {
+  color: #7e8d9d;
+  font-size: 1.6em;
+  margin: 3px 0px;
+}
+html .sky h3 {
+  color: initial;
+  font-size: 1.4em;
+  margin: 2px 0px;
+}
+html .sky h4 {
+  color: initial;
+  font-size: 1.2em;
+}
+html .sky h5 {
+  color: initial;	
+}
+html .sky h6 {
+  color: initial;	
+}
+html .sky a {
+  color: #5ca1d2;
+}
+html .sky [autofocus] {
+  color: #3ea1e6;
+}
+html .sky ti-tile-title #titleDiv,
+html .sky ti-tile-title #containerDiv {
+  background-color: #7ec0ee !important;
+  color: #fff !important;
+}
+html .sky ti-widget-button:not(.idunno),
+html .sky paper-button {
+  margin: 2px;
+  color: #424540;
+}
+html .sky ti-widget-button[disabled]:not(#idunno),
+html .sky paper-button[disabled]:not(#idunno) {
+  color: #7e8d9d !important;
+  background-color: #c9c9c9 !important;
+}
+html .sky ti-widget-button[raised]:not(.idunno),
+html .sky paper-button[raised] {
+  background-color: #3ea1e6;
+  color: #fff;
+}
+html .sky ti-widget-button[primary],
+html .sky paper-button[primary] {
+  color: #3ea1e6 !important;
+}
+html .sky ti-widget-button[primary][raised],
+html .sky paper-button[primary][raised] {
+  background-color: #3ea1e6 !important;
+  color: #fff !important;
+}
+html .sky ti-widget-button[secondary],
+html .sky paper-button[secondary] {
+  color: #78bdee !important;
+}
+html .sky ti-widget-button[secondary][raised],
+html .sky paper-button[secondary][raised] {
+  background-color: #78bdee !important;
+  color: #fff !important;
+}
+html .sky ti-widget-button[success],
+html .sky paper-button[success] {
+  color: #76c753 !important;
+}
+html .sky ti-widget-button[success][raised],
+html .sky paper-button[success][raised] {
+  background-color: #76c753 !important;
+  color: #fff !important;
+}
+html .sky ti-widget-button[info],
+html .sky paper-button[info] {
+  color: #1469c8 !important;
+}
+html .sky ti-widget-button[info][raised],
+html .sky paper-button[info][raised] {
+  background-color: #1469c8 !important;
+  color: #fff !important;
+}
+html .sky ti-widget-button[warning],
+html .sky paper-button[warning] {
+  color: #ffa500 !important;
+}
+html .sky ti-widget-button[warning][raised],
+html .sky paper-button[warning][raised] {
+  background-color: #ffa500 !important;
+  color: #fff !important;
+}
+html .sky ti-widget-button[error],
+html .sky paper-button[error] {
+  color: #db5656 !important;
+}
+html .sky ti-widget-button[error][raised],
+html .sky paper-button[error][raised] {
+  background-color: #db5656 !important;
+  color: #fff !important;
+}
+html .sky ti-widget-button[link],
+html .sky paper-button[link] {
+  color: #000 !important;
+}
+html .sky ti-widget-button[link][raised],
+html .sky paper-button[link][raised] {
+  background-color: #fff !important;
+  color: #000 !important;
+}
+html .sky design-frame,
+html .sky ti-widget-checkbox,
+html .sky paper-checkbox {
+  --paper-checkbox-checked-color: #3ea1e6;
+  --paper-checkbox-checked-ink-color: #3ea1e6;
+  --paper-checkbox-unchecked-color: #7e8d9d;
+  --paper-checkbox-unchecked-ink-color: #7e8d9d;
+  --paper-checkbox-label-color: #222;
+}
+html .sky ti-widget-textbox[disabled],
+html .sky ti-widget-checkbox[disabled],
+html .sky paper-checkbox[disabled] {
+  color: #aaa !important;
+}
+html .sky design-frame,
+html .sky paper-menu,
+html .sky paper-fab {
+  --iron-icon-fill-color: currentColor;	
+  --paper-fab-background: #3ea1e6;
+  --paper-fab-iron-icon: {
+    fill: #fff;
+  }
+}
+html .sky design-frame,
+html .sky ti-widget-floating-action-button {
+  --ti-widget-floating-action-button-background: #3ea1e6;
+  --ti-widget-floating-action-button-color: #fff;
+}
+html .sky design-frame,
+html .sky ti-widget-icon-button {
+  --ti-widget-icon-button-color: #3ea1e6;
+}
+html .sky iron-toolbar paper-tabs {
+  -webkit-box-shadow: none;
+  box-shadow: none;
+}
+html .sky design-frame,
+html .sky ti-widget-tabcontainer,
+html .sky paper-tabs {
+  --paper-tabs-selection-bar-color: #ffff8d;
+}
+html .sky design-frame,
+html .sky ti-widget-tabcontainer,
+html .sky paper-tab {
+  --paper-tab-ink: #ffff8d;
+}
+html .sky paper-tabs,
+html .sky iron-toolbar {
+  background-color: #7ec0ee; /* this controls the background color of the unselected tabs */
+  color: #fff;
+  -webkit-box-shadow: 0px 1px 1px rgba(0,0,0,0.2);
+  box-shadow: 0px 1px 1px rgba(0,0,0,0.2);
+}
+html .sky paper-tabs.transparent-teal {
+  background-color: transparent;
+  color: #7ec0ee;
+  -webkit-box-shadow: none;
+  box-shadow: none;
+}
+html .sky paper-tabs.transparent-teal {
+  --paper-tabs-selection-bar-color: #7ec0ee; 
+}
+html .sky paper-tabs[no-bar] paper-tab.iron-selected {
+  color: #ffff8d;
+  background-color: #7ec0ee;  /* this controls the background color of the selected tab */
+  border-bottom: 1px solid #7ec0ee;
+}
+html .sky paper-toast *,
+html .sky paper-tabs * {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: rgba(0,0,0,0);
+  -webkit-touch-callout: none;
+}
+html .sky design-frame,
+html .sky paper-toast {
+  --paper-toast-background-color: #323232;
+  --paper-toast-color: #f1f1f1;
+}
+html .sky paper-toast {
+  text-align: left;
+}
+html .sky design-frame,
+html .sky ti-widget-toast {
+  --ti-widget-toast-background-color: #323232;
+  --ti-widget-toast-color: #f1f1f1;
+} 
+html .sky design-frame,
+html .sky paper-dropdown-menu,
+html .sky ti-widget-input,
+html .sky paper-input {
+  --paper-input-container-color: #8d928a;
+  --paper-input-container-focus-color: #3ea1e6;
+  --paper-input-container-invalid-color: #db5656;
+  --paper-input-container-input-color: #222;
+}
+html .sky .toolbar {
+  color: #fff;
+  background-color: #7ec0ee;
+}
+html .sky .card {
+  background-color: #fff;
+}
+html .sky paper-item {
+  background-color: #fff;
+  color: #222;
+}
+html .sky paper-item:hover {
+  background-color: #eaf6ff;
+}
+html .sky paper-item.iron-selected {
+  background-color: #fff;
+}
+html .sky .small {
+  font-size: 12px;
+}
+html .sky .logo {
+  font-size: 21px;
+}
+html .sky .logo a {
+  font-weight: 700;
+  color: #fff;
+}
+html .sky .inverse {
+  background-color: #7ec0ee;
+  color: #fff;
+}
+html .sky design-frame,
+html .sky paper-progress {
+  --paper-progress-active-color: #3ea1e6;
+  --paper-progress-secondary-color: #78bdee;
+}
+html .sky design-frame,
+html .sky ti-widget-radio-button,
+html .sky paper-radio-button {
+  --paper-radio-button-unchecked-background-color: #fff; 
+  --paper-radio-button-checked-color: #3ea1e6;
+  --paper-radio-button-unchecked-ink-color: #b2d9f5;
+  --paper-radio-button-checked-ink-color: #b2d9f5;
+}
+html .sky design-frame,
+html .sky ti-tile-toggleswitch,
+html .sky ti-widget-toggle-button,
+html .sky paper-toggle-button {
+  --paper-toggle-button-unchecked-bar-color: #7e8d9d;
+  --paper-toggle-button-checked-bar-color: #7e8d9d;
+  --paper-toggle-button-unchecked-button-color: #fff;
+  --paper-toggle-button-checked-button-color: #3ea1e6;
+  --paper-toggle-button-unchecked-ink-color: #b2d9f5;
+  --paper-toggle-button-checked-ink-color: #b2d9f5;
+}
+html .sky design-frame,
+html .sky paper-slider {
+  --paper-slider-active-color: #3ea1e6;
+  --paper-slider-secondary-color: #78bdee;
+  --paper-slider-knob-color: #3ea1e6;
+  --paper-slider-pin-color: #3ea1e6;
+}
+html .sky design-frame,
+html .sky ti-tile-slider,
+html .sky ti-tile-verticalslider,
+html .sky ti-widget-slider {
+  --ti-widget-slider-progress-color: #3ea1e6;
+  --ti-widget-slider-tick-color: #3ea1e6;
+  --ti-widget-ruler-font-color: #222;
+}
+html .sky paper-icon-button[disabled] iron-icon {
+  color: #c9c9c9 !important;
+}
+html .sky design-frame,
+html .sky paper-spinner:not([default-spinner]) {
+  --paper-spinner-layer-1-color: #3ea1e6;
+  --paper-spinner-layer-2-color: #3ea1e6;
+  --paper-spinner-layer-3-color: #3ea1e6;
+  --paper-spinner-layer-4-color: #3ea1e6;
+}
+html .sky ti-widget-menuseparator #menuSeparator {
+  background-color: #fff;
+}
+html .sky ti-widget-menubar {
+  background-color: #7ec0ee;
+  color: #fff;
+}
+html .sky ti-widget-menubar .logoImage {
+  background-color: #7ec0ee;
+  color: #fff;
+}
+html .sky ti-widget-menuitem .navIcon {
+  color: #fff;
+}
+html .sky ti-widget-menuitem .hovering .navIcon {
+  color: #fff;
+}
+html .sky ti-widget-menuitem .hoverMenu {
+  background-color: #7ec0ee;
+  color: #fff;
+  border-color: #7ec0ee;
+}
+html .sky ti-widget-menuitem .hovering {
+  background-color: #3ea1e6;
+  color: #fff;
+  border-color: #7ec0ee;
+}
+html .sky ti-widget-menuaction li {
+  color: #fff;
+  background-color: #7ec0ee;
+  border-color: #7ec0ee;
+}
+html .sky ti-widget-menuitem.subMenuItem .hovering,
+html .sky ti-widget-menuaction li:hover {
+  background-color: #3ea1e6;
+  color: #fff;
+}
+html .sky ti-widget-menuaction .unenabled {
+  color: #888;
+  background-color: #7ec0ee;
+  border-color: #7ec0ee;
+}
+html .sky ti-widget-menuaction .unenabled:hover {
+  color: #888;
+  background-color: #3ea1e6;
+}
+html .sky design-frame,
+html .sky ti-widget-statusbar {
+  --paper-progress-active-color: #3ea1e6;
+  --paper-progress-secondary-color: #78bdee;
+}
+html .sky design-frame,
+html .sky ti-widget-progressbar {
+  --ti-widget-progressbar-color: #3ea1e6;
+}
+html .sky ti-widget-statusbar .container {
+  background-color: #f5fcff;
+  color: #000;
+}
+html .sky ti-widget-statusbar .icons {
+  background-color: #f5fcff;
+  color: #000;
+}
+html .sky ti-widget-statusbar .statusinfo {
+  background-color: transparent;
+  color: #000;
+  border-style: none;
+  border-width: 0;
+  border-color: transparent;
+}
+html .sky ti-widget-statusbar .poweredby {
+  color: #000;
+}
+html .sky ti-widget-analoggauge .needle {
+  color: #7ec0ee;
+}
+html .sky ti-widget-analoggauge .face {
+  background-color: #fff;
+  color: #000;
+}
+html .sky ti-widget-analoggauge .frame {
+  color: #1469c8;
+}
+html .sky ti-widget-dial .pointer {
+  color: #7ec0ee;
+}
+html .sky ti-widget-dial .knob {
+  background-color: #fff;
+}
+html .sky ti-widget-dial .frame {
+  background-color: #1469c8;
+  color: #fff;
+}
+html .sky label,
+html .sky ti-widget-label,
+html .sky ti-widget-bitfield-header,
+html .sky ti-widget-droplist,
+html .sky ti-widget-numberbox,
+html .sky ti-widget-spinner, 
+html .sky ti-widget-textbox {
+font-family: 'Open Sans', sans-serif;
+background-color: transparent;
+color: #222;
+}
+html .sky label[disabled],
+html .sky ti-widget-label[disabled],
+html .sky ti-widget-bitfield-header[disabled],
+html .sky ti-widget-droplist[disabled],
+html .sky ti-widget-numberbox[disabled],
+html .sky ti-widget-spinner[disabled], 
+html .sky ti-widget-textbox[disabled] {
+  color: #aaa !important;
+}
+html .sky select {
+  border-radius: 0px;
+  font-family: 'Open Sans', sans-serif;
+  border: 1px solid #7e8d9d;
+  font-size: inherit;
+}
+html .sky input {
+  font-family: 'Open Sans', sans-serif;
+  font-size: inherit;
+}

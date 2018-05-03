@@ -1,0 +1,9 @@
+{
+    "template": "Application",
+    "description": "Basic application with a menu bar and status bar",
+    "version": "1.0.12",
+    "tiBrandingEnabled": true,
+    "disableAutoConnect": true,
+    "applicationName": "mmWave Demo Visualizer",
+    "projectName": "mmWave_Demo_Visualizer"
+}

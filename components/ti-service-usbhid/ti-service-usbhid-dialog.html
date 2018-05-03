@@ -1,0 +1,345 @@
+
+<!--
+    Copyright (c) 2014, Texas Instruments Incorporated
+    All rights reserved.
+
+    Redistribution and use in source and binary forms, with or without
+    modification, are permitted provided that the following conditions
+    are met:
+
+    *   Redistributions of source code must retain the above copyright
+    notice, this list of conditions and the following disclaimer.
+    notice, this list of conditions and the following disclaimer in the
+    documentation and/or other materials provided with the distribution.
+    *   Neither the name of Texas Instruments Incorporated nor the names of
+    its contributors may be used to endorse or promote products derived
+    from this software without specific prior written permission.
+
+    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+    AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+    THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+    PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+    CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+    EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+    PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+    OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+    WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+    OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+    EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+-->
+<link rel="import" href="../polymer/polymer.html">
+<link rel="import" href="../ti-widget-common/ti-widget-dialog.html">
+<link rel="import" href="../ti-widget-common/ti-widget-image.html">
+<link rel="import" href="../ti-widget-common/ti-widget-label.html">
+<link rel="import" href="../ti-widget-common/ti-widget-panel.html">
+<link rel="import" href="../paper-button/paper-button.html">
+<link rel="import" href="../iron-icons/iron-icons.html">
+<link rel="import" href="../iron-icon/iron-icon.html">
+<link rel="import" href="../ti-core-backplane/ti-core-backplane.html">
+<link rel="import" href="ti-service-usbhid.html">
+<!--
+`ti-service-usbhid-dialog`
+
+Dialog that provides selectors for USB-HID Port.  When the port is changed, the
+component will notify the ti-service-usbhid widget of the change by calling its onUsbHidPortChangedByUser function,
+which will in turn fire a usbHidPortChangedByUser event.
+
+Example:
+
+    <ti-service-usbhid-dialog></ti-service-usbhid-dialog>
+
+@group TI Core
+@element ti-service-usbhid-dialog
+@homepage ../ti-guicomposer-helpindex/demo.html
+-->
+<dom-module id='ti-service-usbhid-dialog'  >
+
+    <template>
+        <ti-widget-dialog id="dialog" heading="{{dialogTitle}}" is-modal="true" with-backdrop="true" transition="paper-dialog-transition" class="fit" style="text-align:left;background-color: white;width:540px;">
+            <div id="portInfo" >
+                <p></p>Vendor Id Filter: <input id="usbHidVendorIdFilter" type="text" readonly style="width:200px;border:none;"/>
+                <p></p>Ports: <select id="usbHidPortList" style="width:400px"></select>
+            </div><p>&nbsp;</p>
+            <div align="center">
+                <iron-icon id="warningIcon" icon="info" style="display:none;color:darkorange" ></iron-icon>
+                <ti-widget-label id="statusLabel" style="color:black;" wrap label=""></ti-widget-label>
+            </div>
+            <div  align="right" style="padding-left:80px;">
+                <paper-button id="btnConfigure" on-click="onPortSelectedHdlr" >Configure</paper-button>
+                <paper-button id="btnClose" on-click="toggle" style="float:right">Close</paper-button>
+            </div>
+        </ti-widget-dialog>
+    </template>
+
+
+    <!-- ------------------------------------------------------------------------------------- -->
+    <script>
+
+        Polymer ({
+            is: 'ti-service-usbhid-dialog',
+            statusLabel: undefined,
+            warningIcon: undefined,
+            _myTimeout: undefined,
+            activeUsbHidPort: undefined,
+            hostAttributes: {
+            },
+
+            properties: {
+                /**
+                 * the title displayed at the top of the dialog
+                 *
+                 * @attribute dialogTitle
+                 * @type string
+                 * @default 'USB-HID Port Configuration'
+                 */
+                dialogTitle: {
+                    notify: true,
+                    type: String,
+                    value: "USB-HIO Port Configuration"
+                }
+            },
+
+            /**
+             * causes the dialog to become visible if it is not displayed, or not displayed if it is visible
+             *
+             * @method toggle
+             */
+            isDialogOpen: false,
+
+            toggle: function() {
+                if (this._myTimeout) {
+                    window.clearTimeout(this._myTimeout);
+                }
+                this._myTimeout = null;
+                var dialog = this.$.dialog;
+                this.isDialogOpen = !this.isDialogOpen;
+                this.clearStatus();
+                if (this.isDialogOpen){
+                    this.configureComponents();
+                    dialog.style.display = "";
+                    // don't display dialog until the list of USB-HID ports has been generated
+                } else {
+                    dialog.style.display = 'none';
+                    this.unconfigureComponents();
+                }
+                dialog.toggle();
+            },
+            open: function(){
+                if (!this.isDialogOpen) {
+                    this.toggle();
+                }
+                var dialog = this.$.dialog;
+                var rect = dialog.getBoundingClientRect();
+                if (rect.height === 0){
+                    dialog.style.display = "";
+                    console.log("ti-service-usbhid.open: height is 0!")
+                }
+            },
+            close: function() {
+                if (this.isDialogOpen){
+                    this.toggle();
+                }
+            },
+            clearStatus: function(){
+                this.warningIcon.style.display = 'none';
+                this.warningIcon.style.color='blue';
+                this.warningIcon.icon=' ';
+                this.statusLabel.style.color = 'black';
+                this.statusLabel.label = '';
+                this.errorMsgReceived = false;
+            },
+            _backplane: undefined,
+            _usbHidService: undefined,
+
+            _usbHidPortListUpdatedHdlr: function () {
+                this._usbHidService.removeEventListener('usbHidPortListUpdated', this.usbHidPortListUpdatedHdlr);
+                this.generatePortList();
+                if (this.isDialogOpen) {
+                    this.$.dialog.style.display = '';
+                }
+            },
+            usbHidPortListUpdatedHdlr: undefined,
+            configureComponents: function(){
+                this._usbHidService = gc && gc.services && gc.services['ti-service-usbhid'];
+                var _self = this;
+                if ((this._usbHidService !== undefined) && (this._usbHidService !== null)) {
+                    this.activeUsbHidPort = this._usbHidService.selectedUsbHidPort;
+                    this._usbHidService.addEventListener("usbHidPortUIVisibilityChanged", this.usbhidVisiblityChangedHdlr);
+                    this._usbHidService.addEventListener("usbHidPortListUpdated", this.usbHidPortListUpdatedHdlr);
+                    this._usbHidService.addEventListener("statusMsgUpdated", this.statusChangedHdlr);
+                    this._backplane = this._usbHidService.backplane;
+                    if  ((this._backplane !== undefined) && (this._backplane !== null)) {
+                        this._backplane.addEventListener("statusMsgUpdated", this.statusChangedHdlr);
+                    } else {
+                        this._notifyUser("error", "red", "Backplane not defined.", "red");
+                    }
+                    this._usbHidService.listUsbHidPorts(true);  // true forces a re-scan of the USB-HID ports
+
+                } else {
+                    this._notifyUser("error","red","ti-service-usbhid not found in document.body.","red");
+                }
+            },
+            unconfigureComponents: function(){
+                if ((this._backplane !== undefined) && (this._backplane !== null)){
+                    this._backplane.removeEventListener("statusMsgUpdated", this.statusChangedHdlr);
+                }
+                if ((this._usbHidService !== undefined) && (this._usbHidService !== null)) {
+                    this._usbHidService.removeEventListener('usbHidPortListUpdated', this.usbHidPortListUpdatedHdlr);
+                    this._usbHidService.removeEventListener("statusMsgUpdated", this.statusChangedHdlr);
+                }
+            },
+            _statusChangedHdlr: function(e){
+                var msg = e.currentTarget.status;
+                if (msg.toUpperCase().indexOf("ERROR") >= 0){
+                    this.errorMsgReceived = true;
+                    this.notifyUser("error", "red", msg, "red");
+                }
+            },
+            statusChangedHdlr: undefined,
+            errorMsgReceived: false,
+            _usbhidVisiblityChangedHdlr: function(){
+                if (this._usbHidService) {
+                    if ((!this._usbHidService.isUsbHidPortUIVisible)&&(this.isDialogOpen)){
+                        this.toggle();
+                    }
+                }
+            },
+            usbhidVisiblityChangedHdlr: undefined,
+            _notifyUser: function(iconName,iconColor, msgText, textColor){
+                var _self = this;
+                // don't display any messages after auto-close sequence initiated
+                if ((this._myTimeout === undefined) || (this._myTimeout === null)) {
+
+                    this.async(function () {
+                        if (_self.statusLabel) {
+                            if ((msgText !== undefined) && (msgText !== null)) {
+                                _self.statusLabel.style.color = textColor;
+                                _self.statusLabel.label = msgText;
+                                _self.statusLabel.style.display = '';
+                            } else {
+                                _self.statusLabel.style.display = 'none';
+                            }
+                            if (iconName) {
+                                _self.warningIcon.style.color = iconColor;
+                                _self.warningIcon.icon = iconName;
+                                _self.warningIcon.style.display = '';
+                            } else {
+                                _self.warningIcon.style.display = 'none';
+                            }
+                            if (_self.$.btnClose.disabled) {
+                                if ((iconColor === 'red') || (iconColor === 'green')) {
+                                    _self.$.btnClose.disabled = false;
+                                }
+                            }
+                        }
+
+                    },1);
+                }
+            },
+            notifyUser: undefined,
+            numTimesWaiting: 0,
+            created: function() {
+                this.notifyUser = this._notifyUser.bind(this);
+                this.statusChangedHdlr = this._statusChangedHdlr.bind(this);
+                this.usbhidVisiblityChangedHdlr = this._usbhidVisiblityChangedHdlr.bind(this);
+                this.usbHidPortListUpdatedHdlr = this._usbHidPortListUpdatedHdlr.bind(this);
+            },
+            ready: function () {
+                this.statusLabel = this.$.statusLabel;
+                this.warningIcon = this.$.warningIcon;
+
+                var _self = this;
+                // Workaround to ensure paper dialog is properly position: see https://github.com/Polymer/paper-dialog/issues/44
+                this.$.dialog.addEventListener("core-overlay-open-completed", function (e) {
+                    _self.$.dialog.updateTargetDimensions();
+                });
+            },
+            attached: function(){
+                this.async(function(){
+                    // monitor for case where user hits ESC to close the dialog
+                    this.$.dialog.addEventListener('dismiss',function(event){
+                        this.close();
+                    }.bind(this));
+                }.bind(this),1)
+            },
+            _usbHidPortList: undefined,
+            _usbhidVendorIdFilter: undefined,
+            _usbHidService: undefined,
+            _usbhidFound: false,
+
+            generatePortList: function(){
+                // if _myTimeout is not undefined or null, that means that the wizard is waiting to close so don't update
+                // the list of options at this time.
+                if ((this._usbHidService !== undefined) && ((this._myTimeout === undefined) || (this._myTimeout === null))) {
+                    this._usbHidPortList = this.$.usbHidPortList;
+
+                    while (Polymer.dom(this._usbHidPortList).childNodes[0]) {
+                        Polymer.dom(this._usbHidPortList).removeChild(Polymer.dom(this._usbHidPortList).childNodes[0]);
+                    }
+                    this._usbHidVendorIdFilter = this.$.usbHidVendorIdFilter;
+
+
+
+                    var html = "";
+
+                    var recommendedPort = 0;
+                    var selectedPort = 0;
+                    if ((this._usbHidService) && (this._usbHidService.vendorIdFilter)){
+                        this._usbHidVendorIdFilter.value = this._usbHidService.vendorIdFilter+ " (Texas Instruments)";  //TODO - if we eventually allow user to specify the vendorIdFilter, need to get this from the list of ports
+                    }
+
+                    if ((this._usbHidService) && (this._usbHidService.usbHidPorts) && (this._usbHidService.usbHidPorts.length > 0)) {
+                        for (var i = 0; i < this._usbHidService.usbHidPorts.length; i++) {
+                            var port = this._usbHidService.usbHidPorts[i];
+                            html += "<option value=\"" + port.displayName + "\">" + port.displayName + "</option>\n";
+                            var opt = document.createElement('option');
+                            opt.value = i;
+                            opt.text = port.comName + " (Product Id="+port.productId+")";
+                            //opt.innerHTML = i;
+
+                            Polymer.dom(this._usbHidPortList).appendChild(opt);
+                            // the automatically selected port may be different than the currently selected port
+                            // if the user has previously force-configured the port.  Always use the currently selected
+                            // port rather than the 'recommended' port auto-selected by the usbhid.listUsbHidPorts method
+                            if (port.selected) {
+                                recommendedPort = i;
+                            }
+                            if (port.displayName === this.activeUsbHidPort.displayName){
+                                selectedPort = i;
+                                this._usbHidPortList.options[i].selected = true;
+                            }
+                        }
+                        //$("#formData").html(html);
+                        this._usbHidPortList.value = selectedPort;
+                        console.log('ti-service-usbhid-dialog: active USB-HID port = '+this._usbHidPortList.options[selectedPort].displayName+', recommended port = '+this._usbHidPortList.options[recommendedPort].displayName);
+
+
+                        if ((this._usbHidService)&&(!this._usbHidService.wasTIUsbHidPortFound)){
+                            this._notifyUser("warning", "orange", "No Texas Instrument USB ports detected.  Please check your USB connections...", "black")
+                        }
+                    }
+                }
+            },
+            onPortSelectedHdlr: function(e) {
+                var portIndex = this._usbHidPortList.selectedIndex;
+                console.log('User selected USB-HID port[' + portIndex + '] ' + this._usbHidService.usbHidPorts[portIndex].displayName );
+
+                this._usbHidService.changeUsbHidPortOptions(portIndex);
+                var _self = this;
+                // delay a couple of seconds before automatically closing the dialog
+                // Also helps to avoid 'Access Denied' errors to defer closing and reopening the port
+                this._notifyUser("info", "blue", "Reconfiguring connection to target...", "black")
+                this._myTimeout = window.setTimeout(function () {
+                    _self.close();
+                }, 1000);
+            },
+            applyChanges: function(portIndex) {
+                if (this._usbHidService.currentState.name.indexOf("running") === 0) {
+                    this._usbHidService.updateStateMachine('userCloseUsbHidPort');
+                }
+            }
+        });
+    </script>
+
+
+</dom-module>

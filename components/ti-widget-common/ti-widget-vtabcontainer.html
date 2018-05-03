@@ -1,0 +1,659 @@
+<!--
+    Copyright (c) 2015, Texas Instruments Incorporated
+    All rights reserved.
+
+    Redistribution and use in source and binary forms, with or without
+    modification, are permitted provided that the following conditions
+    are met:
+
+    *   Redistributions of source code must retain the above copyright
+        notice, this list of conditions and the following disclaimer.
+        notice, this list of conditions and the following disclaimer in the
+        documentation and/or other materials provided with the distribution.
+    *   Neither the name of Texas Instruments Incorporated nor the names of
+        its contributors may be used to endorse or promote products derived
+        from this software without specific prior written permission.
+
+    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+    AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+    THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+    PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+    CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+    EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+    PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+    OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+    WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+    OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+    EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+-->
+<link rel="import" href="../polymer/polymer.html">
+<link rel="import" href="../paper-tabs/paper-tabs.html">
+<link rel="import" href="../paper-tabs/paper-tab.html">
+<link rel="import" href="../paper-tabs-vertical/paper-tab-vertical.html">
+<link rel="import" href="../paper-tabs-vertical/paper-tabs-vertical.html">
+<link rel="import" href="../iron-pages/iron-pages.html">
+<link rel="import" href="../iron-icons/iron-icons.html">
+<link rel="import" href="../ti-core-icons/ti-core-icons.html">
+<link rel="import" href="../iron-flex-layout/classes/iron-flex-layout.html">
+<!--
+`ti-widget-vtabcontainer` is an tabbed container widget to host child widgets in different tabs.
+
+Example:
+
+    <ti-widget-vtabcontainer>
+        <ti-widget-tab name="tab1"></ti-widget-tab>
+        <ti-widget-tab name="tab2"></ti-widget-tab>
+    </ti-widget-vtabcontainer>
+
+See demo for a full working example of how to use this component.
+
+@group Ti Elements
+@element ti-widget-tab
+@demo demo.html
+@homepage ../../../ti-guicomposer-helpindex/demo.html
+-->
+<dom-module id='ti-widget-vtabcontainer'  >
+
+    <template>
+        <style is="custom-style">
+            :host {
+                display : inline-block;
+                text-decoration: inherit;
+                position : relative;
+            }
+            paper-tabs, iron-pages {
+                position: relative;
+                height: 100%;
+            }
+            #layoutDiv {
+                width: 100%;
+                height: 100%;
+                position: relative;
+            }
+            .flex-horizontal {
+                @apply(--layout-horizontal);
+                width: 100%;
+                height: 100%;
+                position: relative;
+            }
+            .flex-vertical {
+                @apply(--layout-vertical);
+            }
+            .flexchild-vertical {
+                @apply(--layout-flex);
+            }
+            #vtabs {
+                --paper-tabs-selection-bar-color: teal;
+            }
+            .htab-icon {
+                margin-bottom:15px;
+                right:0px;
+                padding-right: 10px;
+                width:30px;
+                height: 20px;
+                position: relative;
+            }
+            .htab-label {
+                margin-bottom: 15px;
+                height: 25px;
+                padding-right: 5px;
+                left:0;
+                overflow-x: visible;
+                position: relative;
+                white-space: normal;
+                text-align: right;
+            }
+            .htab-div{
+                left:0;
+                position: relative;
+                overflow-x: visible;
+            }
+            #childTabLayoutDiv {
+                left: calc(50% - 20px);
+                width: calc(50% + 20px);
+                position: absolute;
+            }
+            .ptv {
+                left:0;
+                position: relative;
+                @apply(--layout-self-start);
+                transition-property: height;
+                transition-duration: 0.5s;
+
+            }
+
+        </style>
+        <div id="layoutDiv" class="layout horizontal">
+            <template id="mainTemplate" is="dom-if" restamp if="{{!hideVtabLabels}}">
+                <div id="layoutDiv2" >
+                    <paper-tabs-vertical id="vtabs" selected="{{selectedIndex}}" no-bar class="container flex-vertical" style="height:100%;">
+                        <template id="tab_template" is="dom-repeat" restamp items="{{_vtabLabels}}" as="label" index-as="vtab_index" >
+                            <paper-tab-vertical id$="tab_[[vtab_index]]" on-mousedown="_vtabClickHdlr" class="ptv" style$="[[_getVtabStyle(vtab_index,selectedIndex,vtabHeightInPx,isExpanded,_refreshCtr)]]" noink="{{noink}}" ink-color="{{inkColor}}" title="[[_getVtabTooltip(vtab_index)}}">
+                                <template is="dom-if" restamp if="{{_isVtabIcon(vtab_index,_refreshCtr)}}">
+                                    <iron-icon id$="icon_[[vtab_index]]" icon="{{_getVtabIcon(vtab_index,_refreshCtr)}}" style$="{{_getVtabIconStyle(vtab_index,selectedIndex,colorSelected,_refreshCtr)}};"></iron-icon>
+                                    <template is="dom-if" restamp if="{{isExpanded}}">
+                                        <div id="childTabLayoutDiv" class="layout vertical">
+                                            <template is="dom-repeat" items="{{_getHtabs(_refreshCtr,vtab_index,_vtabLabels)}}" as="htab" index-as="htab_index">
+                                                <div id$="htab_[[vtab_index]].[[htab_index]]" on-mousedown="_htabClickHdlr" class="htab-div flexchild-vertical" style$="[[_getHtabStyle(_refreshCtr,vtab_index,selectedIndex,colorSelected,_vtabLabels,vtabHeightInPx,htab,htab_index)]]" noink="{{noink}}" ink-color="{{inkColor}}" title="[[_getHtabTooltip(htab,htab_index)}}">
+                                                    <template is="dom-if" if="{{_isHtabIcon(htab,htab_index)}}">
+                                                        <iron-icon id$="icon_[[vtab_index]].[[htab_index]]" class="htab-icon" icon="{{htab.icon}}" style="right:0;" on-mousedown="_htabClickHdlr"></iron-icon>
+                                                    </template>
+                                                    <template is="dom-if" if="{{!_isHtabIcon(htab,htab_index)}}">
+                                                        <div id$="label_[[vtab_index]].[[htab_index]]" class="htab-label" style="right:0;" on-mousedown="_htabClickHdlr">{{htab.name}}</div>
+                                                    </template>
+                                                </div>
+                                            </template>
+                                        </div>
+                                    </template>
+                                </template>
+                                {{label}}
+                            </paper-tab-vertical>
+                        </template>
+                    </paper-tabs-vertical>
+                </div>
+            </template>
+            <iron-pages id="vtabPages" selected="{{selectedIndex}}" class="flex" items-selector="ti-widget-vtab">
+                <content></content>
+            </iron-pages>
+        </div>
+    </template>
+    <script>
+        Polymer ({
+            is: 'ti-widget-vtabcontainer',
+            /**
+             * Fired when the selected tab index is about to be changed
+             * - The event.detail object contains the current selectedIndex and selectedLabel values object before selectedLabel is updated.
+             *  - To receive the callback, add the attribute on-before-selected_tab_changed="myHandler" as an attribute to this component's tag
+             * or in javascript, use templateObj.$.<componentId>.addEventListener("before_selected_tab_changed",function(event){...});
+             *
+             * @event before_selected_tab_changed
+             */
+            /**
+             * Fired when the user changes the selected tab index
+             * - The event.detail object contains selectedIndex and selectedLabel values object.
+             *  - To receive the callback, add the attribute on-selected_tab_changed="myHandler" as an attribute to this component's tag
+             * or in javascript, use templateObj.$.<componentId>.addEventListener("selected_tab_changed",function(event){...});
+             *
+             * @event selected_tab_changed
+             */
+            /**
+             * Fired when the user clicks a tab
+             * - The event.detail object contains a tabIndex property which indicates which tab was clicked.
+             *  - To receive the callback, add the attribute on-tab_click="myHandler" as an attribute to this component's tag
+             * or in javascript, use templateObj.$.<componentId>.addEventListener("tab_click",function(event){...});
+             *
+             * @event tab_click
+             */
+            properties: {
+                /**
+                 * Controls the currently selected tab by zero based index.
+                 *
+                 * @attribute selectedIndex
+                 * @type number
+                 */
+                selectedIndex: {
+                    notify: true,
+                    type: Number,
+                    value: -1,
+                    observer: "selectedIndexChanged"
+                },
+
+                /**
+                 * Controls the currently selected tab by label.
+                 *
+                 * @attribute selectedLabel
+                 * @type string
+                 */
+                selectedLabel: {
+                    notify: true,
+                    type: String,
+                    value: undefined,
+                    observer: "selectedLabelChanged"
+                },
+                /**
+                 * background color of the icon of the selected vertical tab
+                 *
+                 * @attribute backgroundColorSelected
+                 * @type String
+                 * @default "transparent"
+                 */
+                backgroundColorSelected: {
+                    notify: true,
+                    type: String,
+                    value: 'transparent'
+                },
+                /**
+                 * color of the icon of the selected vertical tab
+                 *
+                 * @attribute colorSelected
+                 * @type String
+                 * @default "#c00"
+                 */
+                colorSelected: {
+                    notify: true,
+                    type: String,
+                    value: "#c00"
+                },
+                _vtabLabels: {
+                    notify: false,
+                    type: Array,
+                    value: function(){return [];}
+                },
+                _vtabIcons: {
+                    notify: false,
+                    type: Array,
+                    value: function(){return [];}
+                },
+                _vtabIconStyles: {
+                    notify: false,
+                    type: Array,
+                    value: function(){return [];}
+                },
+                _vtabTooltips: {
+                    notify: false,
+                    type: Array,
+                    value: function(){return [];}
+                },
+                _refreshCtr: {
+                    notify: false,
+                    type: Number,
+                    value: 0
+                },
+                /**
+                 * set to true to hide the tab labels at the top of the tab containers e.g. if you will be controlling
+                 * the selection via javascript or a vertical tab menubar
+                 */
+                hideVtabLabels: {
+                    notify: false,
+                    type: Boolean,
+                    value: false
+                },
+
+                /**
+                 * If true, ink ripple effect is disabled.
+                 *
+                 * @attribute noink
+                 * @type Boolean
+                 * @default false
+                 */
+                noink: {
+                    notify: true,
+                    type: Boolean,
+                    value: false
+                },
+                /**
+                 * Color of the ink ripple effect (if enabled)
+                 *
+                 * @attribute inkColor
+                 * @type String
+                 * @default "#f1f1f1"
+                 */
+                inkColor: {
+                    notify: true,
+                    type: String,
+                    value:  "#f1f1f1"
+                },
+                /**
+                 * if > 0, specifies a fixed height for each vertical tab.
+                 * if <= 0, the vtabs are spread evenly across the vertical height of the tab container
+                 *
+                 * @attribute vtabHeightInPx
+                 * @type Number
+                 * @default -1
+                 */
+                vtabHeightInPx: {
+                    notify: true,
+                    type: Number,
+                    value: -1
+                },
+                /**
+                 * if true, the menu is expanded to show the child horizontal tab pages for each vertical tab
+                 *
+                 * @attribute isExpanded
+                 * @type Boolean
+                 * @default false
+                 */
+                isExpanded: {
+                    notify: true,
+                    type: Boolean,
+                    value: false,
+                    observer: "_isExpandedChanged"
+                },
+                /**
+                 * if true, the menu is automatically expanded when the vertical tab icon
+                 * is clicked and the page associated with the icon contains child horizontal tab pages
+                 *
+                 * @attribute autoExpand
+                 * @type Boolean
+                 * @default true
+                 */
+                autoExpand: {
+                    notify: true,
+                    type: Boolean,
+                    value: true
+                }
+            },
+
+            _domReadyWasCalled: false,
+            _vtabClickHdlr: function(event){
+                var target = event.currentTarget;
+                if ((target) && (target.id) && (target.id.indexOf("_") >= 0)) {
+                    var vtabIndex = parseInt(target.id.substring(target.id.indexOf("_") + 1));
+                    if (!this._htabClicked) {
+
+                        var htabContainer = this._getHtabContainer(vtabIndex);
+                        if (htabContainer) {
+                            if (this.autoExpand){
+                                this.isExpanded = !this.isExpanded;
+                            } else {
+                                htabContainer.selectedIndex = 0; // automatically go to home page
+                            }
+                        } else {
+                            // not htab children for this tab, so don't expand the vtabs
+                            this.isExpanded = false;
+                            this.selectedIndex = vtabIndex;
+                        }
+                    }
+                    this._htabClicked = false;
+                    this.fire("vtab_click",{vtabIndex: vtabIndex});
+                    this._refreshCtr++;
+                }
+            },
+            _htabClicked: false,
+            _htabClickHdlr: function(event){
+                var target = event.currentTarget;
+                if ((target) && (target.id) && (target.id.indexOf("_") >= 0)) {
+                    try {
+                        var htabIndex = parseInt(target.id.substring(target.id.indexOf(".") + 1));
+                        var vtabIndex = parseInt(target.id.substring(target.id.indexOf("_") + 1,target.id.indexOf(".")));
+                        var htabContainer = this._getHtabContainer(vtabIndex);
+                        var vtab = this._getVtab(vtabIndex);
+                        this._htabClicked = true;
+                        htabContainer.selectedIndex = htabIndex;
+                        this.selectedIndex = vtabIndex; // update this after the htabContainer.selectedIndex so that htab styles are properly rendered
+                        this.fire("htab_click",{htabIndex: htabIndex});
+                        this.isExpanded = false;
+                        this._refreshCtr++;
+                    }
+                    catch(ex){
+                        console.log("exception in htabClickHdlr: ex="+ex);
+                    }
+                }
+            },
+            _getVtab: function(vtab_index){
+                var result = null;
+                var items = Polymer.dom(this).children;
+                if ((items) && (vtab_index < items.length)) {
+                    result = items[vtab_index];
+                }
+                return result;
+            },
+            _getVtabStyle: function(vtab_index,_vtabLabels,selectedIndex,isExpanded,_refreshCtr){
+                var vtabRect = document.querySelector('#vtabs').getBoundingClientRect();
+
+                var h = vtabRect.height;
+                if ((this._vtabLabels) && (this._vtabLabels.length > 0)){
+                    h = vtabRect.height/this._vtabLabels.length
+                }
+                if ((this.vtabHeightInPx) && (this.vtabHeightInPx > 0)){
+                    h = this.vtabHeightInPx;
+                }
+                if (isExpanded){
+                    var htabs = this._getHtabs(_refreshCtr,vtab_index,_vtabLabels);
+                    if ((htabs) && (htabs.length > 1)){
+                        h = 20+(40*htabs.length);
+                    }
+                }
+                var result = "padding-top:5px;height:"+ h+"px;";
+                if (vtab_index === selectedIndex){
+                    result += "background-color:"+this.backgroundColorSelected+";color:"+this.colorSelected+";";
+                }
+                return result;
+            },
+            _getHtabContainer: function(vtabIndex){
+                var result = null;
+                var vtab = this._getVtab(vtabIndex);
+                var htabs = this._getHtabs(0,vtabIndex,vtab._tabLabels);
+                if ((htabs) && (htabs.length > 0)) {
+                    result = htabs[0].parentElement;
+                    while ((result) && (result.localName !== 'ti-widget-tabcontainer') && (result.localName !== 'body')){
+                        result = result.parentElement;
+                    }
+                }
+                return result;
+            },
+            _getHtabStyle: function(_refreshCtr,vtab_index,selectedIndex,colorSelected,_vtabLabels,vtabHeightInPx,htab,htab_index){
+                var htabs = this._getHtabs(_refreshCtr,vtab_index,_vtabLabels);
+                var htabContainer = this._getHtabContainer(vtab_index);
+                var numHtabs = 1;
+                if ((htabs) && (htabs.length > 0)){
+                    numHtabs = htabs.length;
+                }
+                var vtabRect = document.querySelector('#vtabs').getBoundingClientRect();
+                var h = vtabRect.height;
+                if ((this._vtabLabels) && (this._vtabLabels.length > 0)){
+                    h = vtabRect.height/this._vtabLabels.length
+                }
+                if ((this.vtabHeightInPx) && (this.vtabHeightInPx > 0)){
+                    h = this.vtabHeightInPx;
+                }
+                h = h / numHtabs;
+
+                var result = "htab height:"+ h+"px;";
+                if ((vtab_index === selectedIndex) && (htabContainer) && (htab_index === htabContainer.selectedIndex)){
+                    result += "background-color:"+this.backgroundColorSelected+";color:"+this.colorSelected+";";
+                }
+                return result;
+            },
+            _getVtabBackground: function(vtab_index,selectedIndex){
+                var result = "white;";
+                if (vtab_index === selectedIndex){
+                    result = "lightgrey;";
+                }
+                var vtabRect = document.querySelector('#vtabs').getBoundingClientRect();
+
+                var h = vtabRect.height;
+                if ((this._vtabLabels) && (this._vtabLabels.length > 0)){
+                    h = vtabRect.height/this._vtabLabels.length
+                }
+                var hs = "height:"+ h+"px;";
+                return result+hs;
+            },
+            _isVtabIcon: function(vtab_index,_refreshCtr){
+                var result = false;
+                if ((this._vtabIcons) && (this._vtabIcons[vtab_index]) && (this._vtabIcons[vtab_index].length > 0)) {
+                    result = true;
+                }
+                return result;
+            },
+            _getVtabIcon: function(vtab_index,_refreshCtr){
+                var result = "cancel";
+                if (this._isVtabIcon(vtab_index,_refreshCtr)) {
+                    result = this._vtabIcons[vtab_index];
+                }
+                console.log("ti-widget-vtabcontainer._getVtabIcon["+vtab_index+"] = "+result);
+                return result;
+            },
+            _getVtabIconStyle: function(vtab_index,selectedIndex,_refreshCtr){
+                var result = "";
+                if ((this._vtabIconStyles) && (this._vtabIconStyles[vtab_index]) && (this._vtabIconStyles[vtab_index].length > 0)) {
+                    result = this._vtabIconStyles[vtab_index];
+                }
+                if (vtab_index === this.selectedIndex){
+                    result +="color:"+this.colorSelected+";";
+                }
+                return result;
+            },
+            _getVtabTooltip:function(vtab_index){
+                var result = "";
+                if ((this._vtabTooltips) && (this._vtabTooltips[vtab_index])) {
+                    result = this._vtabTooltips[vtab_index];
+                }
+                return result;
+            },
+            _getHtabTooltip:function(vtab_index){
+                var result = "";
+                //todo
+                return result;
+            },
+            _isHtabIcon: function(htab,htab_index){
+                var result = false;
+                if ((htab) && (htab.icon)) {
+                    result = true;
+                }
+                return result;
+            },
+            swapItems: function(index1,index2){
+                // remove higher index, then insert before lower index
+                var lowIndex = index1;
+                var highIndex = index2;
+                if (index1 > index2){
+                    lowIndex = index2;
+                    highIndex = index1;
+                }
+                var items = Polymer.dom(this).children;
+                if (items) {
+                    var lowItem = items[lowIndex];
+                    var highItem = items[highIndex];
+                    var highId = highItem.id;
+                    var lowId = lowItem.id;
+                    highItem.id = "tempxyz"+lowId;
+                    lowItem.id = highId;
+                    highItem.id = lowId;
+
+                    Polymer.dom(Polymer.dom(highItem).parentNode).insertBefore(highItem, lowItem);
+                }
+                this.refresh();
+                this.notifyPath("_vtabLabels."+lowIndex);
+                this.notifyPath("_vtabLabels."+highIndex);
+                this.notifyPath("_vtabIcons."+lowIndex);
+                this.notifyPath("_vtabIcons."+highIndex);
+            },
+            onVtabItemsChanged : function()
+            {
+                if (this._domReadyWasCalled) {
+                    var nOldTabs = (this._vtabLabels && this._vtabLabels.length) || 0;
+                    this.splice('_vtabLabels', 0, this._vtabLabels.length);
+                    this.splice('_vtabIcons', 0, this._vtabIcons.length);
+                    this.splice('_vtabIconStyles', 0, this._vtabIconStyles.length);
+                    this.splice('_vtabTooltips', 0, this._vtabTooltips.length);
+                    var items = Polymer.dom(this).children;
+                    if (items) {
+                        for (var i = 0; i < items.length; i++) {
+                            var item = items[i];
+                            if (item) {
+                                this.push("_vtabLabels", item.name);
+                                this.push('_vtabIcons', item.icon);
+                                this.push('_vtabIconStyles', item.iconStyle);
+                                this.push('_vtabTooltips', item.tooltip);
+                            }
+                        }
+                    }
+                    var nNewTabs = (this._vtabLabels && this._vtabLabels.length) || 0;
+                    if (nOldTabs > 0 && (nNewTabs > nOldTabs || this.selectedIndex >= nNewTabs)) {
+                        // if vtabs are changing on the fly we must be in the designer, so lets set the selectedIndex
+                        // to the last tab added in the designer so it is ready for editing.
+                        this.selectedIndex = nNewTabs - 1;
+                    }
+                    for (var j = 0; j < items.length; j++) {
+                        this.notifyPath('_vtabIcons.' + j);
+                        this.notifyPath('_vtabLabels.' + j);
+                        this.notifyPath('_vtabIconStyles.' + j);
+                        this.notifyPath('_tooltips.' + j);
+                    }
+                    console.log("ti-widget-vtabcontainer.onVtabItemsChanged called.");
+                }
+            },
+            selectedIndexChanged: function()
+            {
+                if (this._vtabLabels)
+                {
+                    this.fire("before_selected_tab_changed",{selectedIndex: this.selectedIndex, selectedLabel: this.selectedLabel});
+                    if (this.selectedIndex >= 0 && this.selectedIndex < this._vtabLabels.length)
+                    {
+                        this.selectedLabel = this._vtabLabels[this.selectedIndex];
+                    }
+                    this.fire("selected_tab_changed",{selectedIndex: this.selectedIndex, selectedLabel: this.selectedLabel});
+                }
+            },
+            selectedLabelChanged: function()
+            {
+                if (this.selectedLabel && this._vtabLabels)
+                {
+                    if (this.selectedIndex < 0 || this.selectedIndex >= this._vtabLabels.length ||
+                        this._vtabLabels[this.selectedIndex] != this.selectedLabel)
+                    {
+                        for(var i = this._vtabLabels.length; i --> 0; )
+                        {
+                            if (this._vtabLabels[i] == this.selectedLabel)
+                            {
+                                this.selectedIndex = i;
+                                break;
+                            }
+                        }
+                    }
+                }
+            },
+            _isExpandedChanged: function(newValue, oldValue){
+                var vtabs =  document.querySelector('#vtabs');
+                if (vtabs) {
+                    vtabs.isExpanded = newValue;
+                }
+            },
+            _getHtabs: function(_refreshCtr,vtab_index,_vtabLabels){
+                var result = [];
+                var vtab = this._getVtab(vtab_index);
+                if (vtab.children.length > 0){
+                    try {
+                        var element = vtab.children[0];
+                        if (element.localName === 'ti-widget-tabcontainer') {
+                            result = element._tabItems;
+                        }
+                        console.log("ti-widget-vtabcontainer._getHtabs[" + vtab_index + "] = " + result);
+                    }
+                    catch(ex){
+                        console.log()
+                    }
+                }
+                return result;
+            },
+            _getHtabIcons: function(_refreshCtr,vtab_index,_vtabLabels){
+                var result = [];
+                var vtab = this._getVtab(vtab_index);
+                if (vtab.children.length > 0){
+                    try {
+                        var element = vtab.children[0];
+                        if (element.localName === 'ti-widget-tabcontainer') {
+                            result = element._tabIcons;
+                            for (var j = 0; j < result.length; j++) {
+                                if (!result[j]) {
+                                    result[j] = "ti-core-icons:keypad-question-mark";
+                                }
+                            }
+                        }
+                        console.log("ti-widget-vtabcontainer._getHtabIcons[" + vtab_index + "] = " + result);
+                    }
+                    catch(ex){
+                        console.log()
+                    }
+                }
+                return result;
+            },
+            refresh: function(){
+                this.onVtabItemsChanged();
+                this._refreshCtr++;
+            },
+            attached: function() {
+                this.async(function() {
+                    this.domReady();
+                }.bind(this),1);
+            },
+            domReady: function()
+            {
+                this._domReadyWasCalled = true;
+                this.splice('_vtabLabels', 0, this._vtabLabels.length);
+                this.onVtabItemsChanged();
+            }
+        });
+    </script>
+</dom-module>

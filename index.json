@@ -1,0 +1,14 @@
+{
+    "widgetBindings": [
+        {
+            "widgetId": "ti_widget_spinner",
+            "propertyName": "value",
+            "serverBindName": "widget.ti_widget_spinner1.value"
+        },
+        {
+            "widgetId": "ti_widget_spinner1",
+            "propertyName": "value",
+            "serverBindName": "widget.ti_widget_spinner.Math.log2(value)"
+        }
+    ]
+}

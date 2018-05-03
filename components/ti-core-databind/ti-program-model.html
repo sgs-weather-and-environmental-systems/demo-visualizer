@@ -1,0 +1,445 @@
+
+<!--
+    Copyright (c) 2015, Texas Instruments Incorporated
+    All rights reserved.
+
+    Redistribution and use in source and binary forms, with or without
+    modification, are permitted provided that the following conditions
+    are met:
+
+    *   Redistributions of source code must retain the above copyright
+    notice, this list of conditions and the following disclaimer.
+    notice, this list of conditions and the following disclaimer in the
+    documentation and/or other materials provided with the distribution.
+    *   Neither the name of Texas Instruments Incorporated nor the names of
+    its contributors may be used to endorse or promote products derived
+    from this software without specific prior written permission.
+
+    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+    AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+    THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+    PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+    CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+    EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+    PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+    OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+    WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+    OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+    EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+-->
+
+<link rel="import" href="../polymer/polymer.html">
+
+<link rel="import" href="../ti-core-databind/ti-core-databind.html">
+<link rel="import" href="../ti-core-databind/ti-core-model-base-behavior.html">
+<link rel="import" href="../ti-service-targetaccess/ti-service-targetaccess.html">
+<script src='src/internal/pm/DSEvalBind.js'></script>
+<script src='src/ProgramModel.js'></script>
+<!--
+`ti-program-model` adds the program model for databinding to a c-program with static variables running on the target.
+    -
+Example:
+
+    <ti-program-model></ti-program-model>
+
+See ../demo/ti-program-model/demo.html for a full working example of how to use this component.
+
+@group Ti Elements
+@element ti-program-model
+@homepage elements/ti-guicomposer-helpindex/demo.html
+@demo demo.html
+-->
+<dom-module id='ti-program-model'  >
+<template>
+    <style>
+        :host {
+            display: none;
+    }
+    </style>
+    <ti-service-targetaccess id="ds" model-id="[[id]]" selected-device="{{selectedDevice}}" default-baud-rate="{{defaultBaudRate}}"
+    				device-name="[[deviceName]]" connection-id="[[connectionId]]"
+                    target-program="[[targetProgram]]" target-program-verify-image="[[targetProgramVerifyImage]]" target-folder="[[targetFolder]]"
+    				transport="[[transport]]" backplane="{{backplane}}" wait-for-target-ready can-flash-device="{{canFlashDevice}}">
+    </ti-service-targetaccess>
+</template>
+<script>
+(function() {
+    
+    var ValueChangeListener = function(node, bindName)
+    {
+        this.node = node;
+        this.bindName = bindName;
+    };
+    
+    ValueChangeListener.prototype = new gc.databind.IChangedListener();
+    
+    ValueChangeListener.prototype.onValueChanged = function(oldValue, newValue)
+    {
+        this.node[this.bindName] = newValue; 
+    };
+    
+    var createChangeBindingCallback = function(binding)
+    {
+        return function(oldValue, newValue)
+        { 
+            binding.setValue(newValue);
+        };
+    };
+    
+    var createBindingObservers = function(pmNode)
+    {
+        var bindingsAttribute = pmNode.bindings || pmNode.getAttribute('bindings');
+        if (bindingsAttribute)
+        {
+            var binds = bindingsAttribute.split(' ');
+            for(var i = binds.length; i-- > 0; )
+            {
+                var bindName = binds[i].trim();
+                if (bindName.length > 0)
+                {
+    
+                    // create binding 
+                    var binding = gc.databind.ProgramModel.getBinding(bindName);
+                    binding.addChangedListener(new ValueChangeListener(pmNode, bindName));
+                    
+                    pmNode.observe[bindName] = createChangeBindingCallback(binding);
+                    pmNode._observeNames.push(bindName);
+                }
+            }
+        }
+    };
+        
+    Polymer ({
+		is: 'ti-program-model',  
+     
+		behaviors: [TICoreModelBaseBehavior],
+      
+	    hostAttributes: {
+	    },
+	    
+	    properties: {
+	        selectedDevice: {
+	          notify: true,
+	          type: Object,
+	          value: undefined
+            },
+            /** the name of the target device for serial communications with the target.  This is only needed to auto program the 
+             * the target device with an image.
+             *
+             * @attribute deviceName
+             * @type String
+             */
+         	deviceName: {
+         	    type: String,
+         	    value: undefined
+         	},
+
+             /** the name of the connection for serial communications with the target.  This is only needed to auto program the 
+             * the target device with an image.
+             *
+             * @attribute connectionId
+             * @type String
+             */
+         	connectionId: {
+         	    type: String,
+         	    value: undefined
+         	},
+         	
+            /**
+             * The relative path to the program to auto load onto the target device before serial communications can begin.
+             * @attribute targetProgram
+             * @type string
+             */
+            targetProgram: {
+                type: String,
+                value: undefined
+            },
+            /**
+             * The name of the program image to use to verify the program loaded into the target device.
+             * If specified, this will be used to determine whether or not the targetProgram is to be programmed
+             * into the device or not.  Stored in the same targetFolder as the targetProgram (See 'targetFolder')
+             * @attribute targetProgramVerifyImage
+             * @type string
+             */
+            targetProgramVerifyImage: {
+                type: String,
+                value: undefined
+            },
+            /**
+             * The relative or absolute path to the folder where the target program is located.
+             * this attribute is optional, and if omitted, the default folder is 'target/'.
+             * @attribute targetProgram
+             * @type string
+             */
+            targetFolder: {
+                type: String,
+                value: undefined
+            },
+            
+            /**
+             * Flag to indicate if the program should always be loaded automatically.
+             * @type string
+             */
+            autoLoadProgram: {
+                notify: true,
+                type: Boolean,
+                value: false
+            },
+            
+            /** Flat to indicate if the program model should communicate over 'jtag' or 'uart' transport.
+            * @type string
+            */
+            transport: {
+                type: String,
+                value: undefined
+            },
+            /** the serial port baud rate to use by default for serial communications with the target when transport='uart'.
+            *
+            * @attribute defaultBaudRAte
+            * @type Number
+            * @default 9600
+            */
+           defaultBaudRate: {
+               notify: true,
+               type: Number,
+               value: 9600
+           },
+           
+           canFlashDevice: {
+               type: Boolean,
+               value: undefined,
+               notify: true
+           }
+		},
+        created : function()
+        {
+            createBindingObservers(this);
+        },
+        programLoaded: false,
+        domReady: function()
+        {
+        	var that = this;
+        	
+            if (this.id && this.id !== 'pm')
+            {
+            	gc.databind.registry.registerModel(gc.databind.registry.getModel('pm'), false, this.id);
+            }
+            
+        	if (!gc.designer)
+			{
+                gc.connectionManager.autoConnect();
+			}
+        	
+        	that.loadSettingsFromProjectDatabase().then(function(modelData) 
+            {
+                that._ccxmlText = (modelData && modelData.ccxmlText) || {};
+            });
+			
+            that.$.ds.addEventListener('currentStateUpdated', function(event) 
+            {
+            	var activeDebugContext = event.detail['activeDebugContext'];
+            	var activeDebugContextName = event.detail['activeDebugContextName'];
+            
+                console.log("that.$.ds.currentState.name: "+that.$.ds.currentState.name);
+            	if (that.$.ds.currentState.name.indexOf('disconnect') === 0)
+            	{
+                    gc.connectionManager.setConnectedState(that.id, false);
+            	    
+            		// clean up all bindings by clearing critical errors and restarting .$const bindings.
+            		var pm = gc.databind.registry.getModel('pm');
+            		if (pm && pm.getAllBindings)
+            		{
+            			var bindings = pm.getAllBindings();
+						for(var bindName in bindings)
+						{
+							if (bindings.hasOwnProperty(bindName))
+							{
+								var bind = bindings[bindName];
+								if (bind.onDisconnected)
+								{
+									bind.onDisconnected();
+								}
+							}
+						}
+            		}
+            	} 
+            	else if (that.$.ds.currentState.name.indexOf('backplaneReady') === 0 && activeDebugContext)
+            	{
+            	    gc.databind.registry.getBinding('pm.$active_context_name').setValue(activeDebugContextName);
+            	}
+            });
+        },
+        generateProjectMetadata : function(exportDirectory, arrayOfLines)
+        {
+            var bindings = gc.databind.registry.parseBindingsFromGist(this.id, arrayOfLines, 'pm');
+            gc.databind.registry.saveBindingsToFile('index.json', bindings);
+        },
+        ready: function()
+        {
+        	this.targetStatusHandler = this._targetStatusHandler.bind(this);    
+        },
+        attached: function()
+        {
+            gc.databind.registry.getBinding('pm.$target_connected').addChangedListener(this);
+            
+            this.async(function()
+            {
+                this.domReady();
+                this.fire('modelReadyEvent', this);
+                
+                this.$.ds.addEventListener('statusMsgUpdated', this.targetStatusHandler);
+            }.bind(this),1);
+        },
+        detached: function()
+        {
+        	gc.databind.registry.getBinding('pm.$target_connected').removeChangedListener(this);
+            this.$.ds.removeEventListener('statusMsgUpdated', this.targetStatusHandler);
+        },
+        _targetStatusHandler:  function(e)
+        {
+            var msg = e.currentTarget.status;
+            if (msg.toUpperCase().indexOf("ERROR") >= 0)
+            {
+                this.addConsoleError(msg);
+                this.onDisconnected(msg);
+            }
+        },
+        targetStatusHandler: undefined,
+        
+        startConnecting: function(selectedDevice, preventClientAgentInstallCallback)
+        {
+		    var sequencer = gc.connectionManager.sequencer;
+		    this.startBackplane(selectedDevice, preventClientAgentInstallCallback);
+		    
+			if (gc.desktop && gc.desktop.isCCS()) 
+			{
+	            this.waitForEvent(this.backplane, 'connectionStatusChanged', 'isConnectedToCloudAgent', true).then(
+	                this.$.ds._connectDSLite.bind(this.$.ds));
+			} 
+			else 
+			{
+				if (this.autoLoadProgram)
+			    {
+				    this.flashDevice();
+			    }
+			    sequencer.when('targetReady').then(function() 
+			    {
+		            this.waitForEvent(this.backplane, 'connectionStatusChanged', 'isConnectedToCloudAgent', true).then(
+		                this.$.ds.initSelectedDevice).then(function()  
+		            {
+	    		        if (this.shouldAutoConnect())
+	    		        {
+	    		            var ds = this.$.ds;
+	                        ds.selectedDevice = this.backplane.selectedDevice;
+			                if (this.transport && this.transport.toLowerCase() === 'uart') 
+			                {
+			                    
+			    		        this.waitForEvent(ds.$.serialIO, 'serialPortUIVisibilityChanged', 'isSerialPortUIVisible', true).then(function()
+			    		        {
+			    		            ds.waitForTargetReady = false;
+			    		            ds.serialPortListHdlr();
+			    		        });
+			                }
+			                else
+			                {
+		                        ds.ccxmlString =  this.backplane.selectedDeviceCcxmlString;
+		                        ds._startDSLite(ds.ccxmlString).then(function(){
+		                            ds.waitForTargetReady = false;
+                                });
+			                }
+	    		        }
+		            }.bind(this));
+			    }.bind(this));				    
+			}
+        },
+        startDisconnecting: function()
+        {
+            this.$.ds.waitForTargetReady = true;
+            this.$.ds.updateStateMachine('reconnect');
+            this.stopBackplane();
+            this.onDisconnected();
+        },
+        onValueChanged: function(wasConnected, isConnected)
+        {
+            if (isConnected) 
+            {
+                this.onConnected();
+            }
+            else 
+            {
+                this.onDisconnected();
+            }
+        },
+        changeSerialPort: function(comPort, baudRate)
+        {
+			this.$ && this.$.ds && this.$.ds.$.serialIO.changeSerialPort(comPort, baudRate || this.defaultBaudRate);
+        },
+        readValue: function(expression)
+       	{
+		    return gc.target.access.readValue(expression).fail(function(error) { throw error.message; });
+       	},
+       	writeValue: function(expression, value)
+       	{
+            return gc.target.access.writeValue(expression, value).fail(function(error) {throw error.message; });
+       	},
+        saveSettingsToProjectDatabase: function(modelObjData, projectName)
+        {
+            modelObjData.ccxmlText = {};
+            var promises = [];
+            
+            if (this.backplane)
+            {
+	            if (this.transport && this.transport.toLowerCase() === 'uart' && this.deviceName)
+	            {
+	                promises.push(this.backplane.generateCcxmlFile(this.deviceName, 'UARTConnection').then(function(uartCcxml) 
+	                {
+						modelObjData.ccxmlText.uart = uartCcxml;
+					}));
+	            }
+	            
+	            if (this.deviceName && this.connectionId)
+	            {
+	                promises.push(this.backplane.generateCcxmlFile(this.deviceName, this.connectionId).then(function(jtagCcxml) 
+	                {
+						modelObjData.ccxmlText.jtag = jtagCcxml;
+					}));
+	            }
+            }
+	            
+            if (promises.length > 1)
+            {
+            	return Q.all(promises);
+            }
+            else if (promises.length > 0)
+            {
+                return promises[0];
+            }
+        },
+        flashDevice: function()
+        {
+            return Q.promise(function(resolve) 
+            {
+                var sequencer = gc.connectionManager.sequencer;
+                
+    	        sequencer.when('downloadProgram').then(function() 
+    	        {
+                    var programLoader = this.$.ds.$.programLoader;
+                    
+    		        return this.waitForEvent(programLoader, 'programDownloadUIVisibilityChanged', 'isProgramDownloadBtnVisible', true, 
+    		            'isReplugNoticeVisible', true).then(programLoader.doProgramTargetDevice.bind(programLoader, this.addConsoleMessage.bind(this))).fail(function(reason) 
+                    {
+                        this.onDisconnected(reason);
+    					throw reason;
+                    }.bind(this));
+    	        }.bind(this)).then(resolve);
+    	        
+   		        sequencer.after('downloadProgram').schedule(
+   		            'reconnect', gc.connectionManager.reconnectBackplane.bind(gc.connectionManager));
+            }.bind(this));
+        }
+    });
+}());
+
+</script>
+    
+</dom-module>

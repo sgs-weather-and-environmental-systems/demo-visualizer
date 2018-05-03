@@ -1,0 +1,1443 @@
+<!doctype html>
+<!--
+%COPYRIGHTNOTICE%
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions
+are met:
+
+*   Redistributions of source code must retain the above copyright
+notice, this list of conditions and the following disclaimer.
+notice, this list of conditions and the following disclaimer in the
+documentation and/or other materials provided with the distribution.
+*   Neither the name of Texas Instruments Incorporated nor the names of
+its contributors may be used to endorse or promote products derived
+from this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS \"AS IS\"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+-->
+<html>
+<head>
+    <meta content="text/html;charset=utf-8" http-equiv="Content-Type">
+    <title>mmWave Demo Visualizer</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <meta name="mobile-web-app-capable" content="yes">
+    <script src="components/webcomponentsjs/webcomponents-lite.js"></script>
+<script>
+  console.log("window.opener = "+window.opener);
+  if (window.opener) {
+      if (window.opener.getNodeWebkit){
+          window.opener.getNodeWebkit(window,window.opener);
+      }
+  }
+  console.log("typeof process = "+(typeof process).toString());
+</script>
+
+    <script src="app/delaunay.js"></script>
+    <script src="app/fft.js"></script>
+    <script src="app/input.js"></script>
+    <script src="app/math.js"></script>
+    <script src="app/math_gridddata.js"></script>
+    <script src="app/mmWave.js"></script>
+    <script src="app/myutil.js"></script>
+    <link rel="import" href="components/ti-core-databind/ti-core-databind.html">
+
+    <style>
+        body,
+        html {
+            margin: 0;
+            height: 100%;
+            overflow-y: hidden;
+        }
+
+        design-gist-element-preview {
+            position: absolute;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            left: 0;
+        }
+    </style>
+</head>
+<body class="ti-theme">
+<div id="splash" style='width:100%; height:100%; z-index: 999999; background-color: #eeeeee; position: absolute;'>
+	<div style="width: 100%; height: 100%; background: url('./images/loading.gif') no-repeat center"></div>
+</div>
+
+<!-- ------------------------------------------------------------------------------------- -->
+<link rel="import" href="components/ti-widget-readme/ti-widget-readme.html">
+<link rel="import" href="components/ti-core-stylesheets/ti-core-stylesheets.html">
+<link rel="import" href="components/ti-widget-menubar/ti-widget-menubar.html">
+<link rel="import" href="components/ti-widget-menubar/ti-widget-filemenu.html">
+<link rel="import" href="components/ti-widget-menubar/ti-widget-optionsmenu.html">
+<link rel="import" href="components/ti-widget-menubar/ti-widget-helpmenu.html">
+<link rel="import" href="components/ti-widget-menubar/ti-widget-menuaction.html">
+<link rel="import" href="components/ti-widget-toast/ti-widget-toast.html">
+<link rel="import" href="components/ti-widget-common/ti-widget-container.html">
+<link rel="import" href="components/ti-widget-common/ti-widget-tabcontainer.html">
+<link rel="import" href="components/ti-widget-common/ti-widget-tab.html">
+<link rel="import" href="components/ti-widget-common/ti-widget-label.html">
+<link rel="import" href="components/ti-widget-common/ti-widget-droplist.html">
+<link rel="import" href="components/ti-widget-common/ti-widget-slider.html">
+<link rel="import" href="components/ti-widget-common/ti-widget-checkbox.html">
+<link rel="import" href="components/ti-widget-common/ti-widget-textbox.html">
+<link rel="import" href="components/ti-widget-common/ti-widget-button.html">
+<link rel="import" href="components/ti-widget-plot/ti-widget-plot.html">
+<link rel="import" href="components/ti-widget-common/ti-widget-image.html">
+<link rel="import" href="components/ti-widget-statusbar/ti-widget-statusbar.html">
+<link rel="import" href="components/ti-core-databind/ti-serialio-model.html">
+<link rel="import" href="components/ti-widget-streamsaver/ti-widget-streamsaver.html">
+
+ 
+  <template id="template_obj" is="dom-bind">
+
+<style is="custom-style">
+  #ti_widget_menubar {
+    top: 0px;
+    width: 100%;
+    margin: 0px;
+    z-index: 1100;
+    position: absolute;
+  }
+  html .viewport {
+    position: absolute;
+    left: 0px;
+    right: 0px;
+    bottom: 28px;
+    top: 41px;
+    border: medium none;
+  }
+  #viewport {
+    text-align: left;
+    text-decoration: none;
+    font-weight: normal;
+    font-style: normal;
+    font-size: inherit;
+    overflow: auto;
+  }
+  #ti_widget_toast_common {
+    height: 45px;
+    position: fixed;
+    top: 0px;
+    right: 0px;
+  }
+  #ti_widget_statusbar {
+    position: static;
+  }
+  #ti_widget_tabcontainer_main {
+    margin: 5px;
+    width: 99%;
+    height: 98%;
+  }
+  #ti_widget_tab_cfg {
+    text-align: left;
+    text-decoration: none;
+    font-weight: normal;
+    font-style: normal;
+    font-size: inherit;
+  }
+  #ti_widget_tab_plot {
+    text-align: left;
+    text-decoration: none;
+    font-weight: normal;
+    font-style: normal;
+    font-size: inherit;
+    overflow: initial;
+  }
+  #ti_widget_container_profile_selection {
+    width: 600px;
+    border: 1px solid black;
+    text-align: left;
+    text-decoration: none;
+    font-weight: normal;
+    font-style: normal;
+    font-size: inherit;
+    height: 730px;
+    overflow: auto;
+    position: absolute;
+    top: 150px;
+  }
+  #ti_widget_label_profile_selection {
+    text-align: left;
+    text-decoration: none;
+    font-weight: normal;
+    font-style: normal;
+    font-size: inherit;
+    white-space: nowrap;
+    top: 10px;
+    left: 10px;
+    position: absolute;
+  }
+  #ti_widget_label_freq_band {
+    text-align: left;
+    text-decoration: none;
+    font-weight: normal;
+    font-style: normal;
+    font-size: inherit;
+    white-space: nowrap;
+    left: 29px;
+    top: 40px;
+    position: absolute;
+  }
+  #ti_widget_droplist_freq_band {
+    height: auto;
+    font-size: inherit;
+    left: 300px;
+    top: 40px;
+    position: absolute;
+    width: 190px;
+  }
+  #ti_widget_label_platform {
+    text-align: left;
+    text-decoration: none;
+    font-weight: normal;
+    font-style: normal;
+    font-size: inherit;
+    white-space: nowrap;
+    left: 30px;
+    top: 40px;
+    position: absolute;
+  }
+  #ti_widget_droplist_platform {
+    width: 190px;
+    height: auto;
+    font-size: inherit;
+    left: 300px;
+    top: 40px;
+    position: absolute;
+  }
+  #ti_widget_label_subprofile {
+    text-align: left;
+    text-decoration: none;
+    font-weight: normal;
+    font-style: normal;
+    font-size: inherit;
+    white-space: nowrap;
+    left: 30px;
+    top: 10px;
+    position: absolute;
+  }
+  #ti_widget_droplist_subprofile {
+    left: 300px;
+    top: 10px;
+    position: absolute;
+    width: 190px;
+  }
+  #ti_widget_label_azimuth_resolution {
+    text-align: left;
+    text-decoration: none;
+    font-weight: normal;
+    font-style: normal;
+    font-size: inherit;
+    white-space: nowrap;
+    left: 30px;
+    top: 100px;
+    position: absolute;
+  }
+  #ti_widget_droplist_azimuth_resolution {
+    width: 190px;
+    font-size: inherit;
+    left: 300px;
+    top: 100px;
+    position: absolute;
+    height: auto;
+  }
+  #ti_widget_label_range_resolution {
+    text-align: left;
+    text-decoration: none;
+    font-weight: normal;
+    font-style: normal;
+    font-size: inherit;
+    white-space: nowrap;
+    left: 30px;
+    top: 80px;
+    position: absolute;
+  }
+  #ti_widget_slider_range_resolution {
+    width: 200px;
+    left: 290px;
+    top: 75px;
+    position: absolute;
+  }
+  #ti_widget_label_max_range {
+    text-align: left;
+    text-decoration: none;
+    font-weight: normal;
+    font-style: normal;
+    font-size: inherit;
+    white-space: nowrap;
+    left: 30px;
+    top: 120px;
+    position: absolute;
+  }
+  #ti_widget_slider_max_range {
+    width: 200px;
+    left: 290px;
+    top: 115px;
+    position: absolute;
+  }
+  #ti_widget_label_max_radial_vel {
+    text-align: left;
+    text-decoration: none;
+    font-weight: normal;
+    font-style: normal;
+    font-size: inherit;
+    white-space: nowrap;
+    left: 30px;
+    top: 160px;
+    position: absolute;
+  }
+  #ti_widget_slider_max_radial_vel {
+    width: 200px;
+    left: 290px;
+    top: 155px;
+    position: absolute;
+  }
+  #ti_widget_label_radial_vel_resolution {
+    text-align: left;
+    text-decoration: none;
+    font-weight: normal;
+    font-style: normal;
+    font-size: inherit;
+    white-space: nowrap;
+    left: 30px;
+    top: 200px;
+    position: absolute;
+  }
+  #ti_widget_droplist_radial_vel_resolution {
+    width: 190px;
+    font-size: inherit;
+    left: 300px;
+    top: 200px;
+    position: absolute;
+  }
+  #ti_widget_button_send_command {
+    left: 10px;
+    top: 45px;
+    position: absolute;
+  }
+  #ti_widget_button_save_config {
+    left: 272px;
+    top: 45px;
+    position: absolute;
+  }
+  #ti_widget_container_selected_values {
+    height: 130px;
+    width: 560px;
+    border: 1px solid black;
+    text-align: left;
+    text-decoration: none;
+    font-weight: normal;
+    font-style: normal;
+    font-size: inherit;
+    overflow: auto;
+    left: 610px;
+    top: 10px;
+    position: absolute;
+  }
+  #ti_widget_label_RCS_calc {
+    text-align: left;
+    text-decoration: none;
+    font-weight: normal;
+    font-style: normal;
+    font-size: inherit;
+    white-space: nowrap;
+    left: 10px;
+    top: 10px;
+    position: absolute;
+  }
+  #ti_widget_input_range_res_sel {
+    left: 504px;
+    top: 80px;
+    position: absolute;
+    border: 1px solid black;
+    width: 50px;
+    background-color: rgb(229, 229, 229);
+  }
+  #ti_widget_input_max_range_sel {
+    left: 504px;
+    top: 120px;
+    position: absolute;
+    border: 1px solid black;
+    width: 50px;
+    background-color: rgb(229, 229, 229);
+  }
+  #ti_widget_input_max_radial_vel_sel {
+    left: 504px;
+    top: 160px;
+    position: absolute;
+    border: 1px solid black;
+    width: 50px;
+    background-color: rgb(229, 229, 229);
+  }
+  #ti_widget_input_radial_vel_res_sel {
+    left: 504px;
+    top: 200px;
+    position: absolute;
+    border: 1px solid black;
+    width: 50px;
+    background-color: rgb(229, 229, 229);
+  }
+  #ti_widget_container_plot_selection {
+    height: 120px;
+    width: 590px;
+    text-align: left;
+    text-decoration: none;
+    font-weight: normal;
+    font-style: normal;
+    font-size: inherit;
+    position: absolute;
+    left: 3px;
+    top: 528px;
+  }
+  #ti_widget_label_plot_selection {
+    text-align: left;
+    text-decoration: none;
+    font-weight: normal;
+    font-style: normal;
+    font-size: inherit;
+    white-space: nowrap;
+    left: 7.01389px;
+    top: 8.00348px;
+    position: absolute;
+  }
+  #ti_widget_checkbox_scatter_plot {
+    text-align: left;
+    font-size: inherit;
+    left: 30px;
+    top: 35px;
+    position: absolute;
+  }
+  #ti_widget_checkbox_range_profile {
+    text-align: left;
+    font-size: inherit;
+    left: 30px;
+    top: 60px;
+    position: absolute;
+  }
+  #ti_widget_checkbox_doppler_heatmap {
+    text-align: left;
+    font-size: inherit;
+    left: 297.986px;
+    top: 60px;
+    position: absolute;
+  }
+  #ti_widget_checkbox_azimuth_heatmap {
+    text-align: left;
+    font-size: inherit;
+    left: 297.986px;
+    top: 35px;
+    position: absolute;
+  }
+  #ti_widget_container_cfg_console {
+    height: 730px;
+    width: 560px;
+    border: 1px solid black;
+    text-align: left;
+    text-decoration: none;
+    font-weight: normal;
+    font-style: normal;
+    font-size: inherit;
+    overflow: auto;
+    position: absolute;
+    left: 610px;
+    top: 150px;
+  }
+  #ti_widget_label_cfg_console {
+    text-align: left;
+    text-decoration: none;
+    font-weight: normal;
+    font-style: normal;
+    font-size: inherit;
+    white-space: nowrap;
+    left: 10px;
+    top: 10px;
+    position: absolute;
+  }
+  #ti_widget_textbox_cfg_console {
+    font-size: inherit;
+    left: 10px;
+    top: 50px;
+    position: absolute;
+    overflow: auto;
+    width: 540px;
+    resize: none;
+  }
+  #ti_widget_button_load_cfg {
+    left: 5px;
+    top: 140px;
+    position: absolute;
+  }
+  #ti_widget_plot1 {
+    width: 480px;
+    height: 500px;
+    position: absolute;
+    left: 0px;
+    top: 0px;
+  }
+  #ti_widget_plot2 {
+    width: 580px;
+    height: 500px;
+    position: absolute;
+    left: 500px;
+    top: 0px;
+  }
+  #ti_widget_plot3 {
+    width: 480px;
+    height: 500px;
+    left: 0px;
+    top: 500px;
+    position: absolute;
+  }
+  #ti_widget_plot4 {
+    width: 480px;
+    height: 500px;
+    left: 500px;
+    top: 500px;
+    position: absolute;
+  }
+  #ti_widget_plot5 {
+    width: 480px;
+    height: 500px;
+    left: 1000px;
+    top: 500px;
+    position: absolute;
+  }
+  #ti_widget_container_cb {
+    width: 80px;
+    text-align: left;
+    text-decoration: none;
+    font-weight: normal;
+    font-style: normal;
+    font-size: inherit;
+    top: 120px;
+    position: absolute;
+    height: 270px;
+    left: 1000px;
+  }
+  #ti_widget_label_cbmin {
+    text-align: left;
+    text-decoration: none;
+    font-weight: normal;
+    font-style: normal;
+    font-size: inherit;
+    white-space: nowrap;
+    position: absolute;
+    left: 35px;
+    bottom: 0px;
+  }
+  #ti_widget_label_cbmax {
+    text-align: left;
+    text-decoration: none;
+    font-weight: normal;
+    font-style: normal;
+    font-size: inherit;
+    white-space: nowrap;
+    left: 35px;
+    top: 0px;
+    width: 0px;
+    height: 0px;
+    position: absolute;
+  }
+  #ti_widget_container_summary {
+    position: absolute;
+    top: 0px;
+    width: 650px;
+    height: 500px;
+    overflow: visible;
+    left: 1100px;
+  }
+  #ti_widget_label_depth {
+    text-align: left;
+    text-decoration: none;
+    font-weight: normal;
+    font-style: normal;
+    font-size: inherit;
+    white-space: nowrap;
+    left: 10px;
+    top: 10px;
+    position: absolute;
+  }
+  #ti_widget_textbox_depth {
+    left: 140px;
+    top: 5px;
+    position: absolute;
+    width: 50px;
+  }
+  #ti_widget_label_width {
+    text-align: left;
+    text-decoration: none;
+    font-weight: normal;
+    font-style: normal;
+    font-size: inherit;
+    white-space: nowrap;
+    left: 200px;
+    top: 10px;
+    position: absolute;
+  }
+  #ti_widget_textbox_width {
+    left: 300px;
+    top: 5px;
+    position: absolute;
+    width: 50px;
+  }
+  #ti_widget_label_rpymax {
+    text-align: left;
+    text-decoration: none;
+    font-weight: normal;
+    font-style: normal;
+    font-size: inherit;
+    white-space: nowrap;
+    left: 10px;
+    top: 40px;
+    position: absolute;
+  }
+  #ti_widget_textbox_rpymax {
+    font-size: inherit;
+    left: 140px;
+    top: 35px;
+    position: absolute;
+    width: 50px;
+  }
+  #ti_widget_checkbox_rplogscale {
+    text-align: left;
+    font-size: inherit;
+    left: 200px;
+    top: 40px;
+    position: absolute;
+  }
+  #ti_widget_label_summarytab {
+    text-align: left;
+    text-decoration: none;
+    font-weight: normal;
+    font-style: normal;
+    font-size: inherit;
+    white-space: nowrap;
+    left: 10px;
+    top: 5px;
+    position: absolute;
+  }
+  #ti_widget_droplist_summarytab {
+    width: 110px;
+    height: auto;
+    font-size: inherit;
+    left: 240px;
+    top: 5px;
+    position: absolute;
+  }
+  #ti_widget_container_summarytab {
+    height: 300px;
+    width: 625px;
+    text-align: left;
+    text-decoration: none;
+    font-weight: normal;
+    font-style: normal;
+    font-size: inherit;
+    overflow: auto;
+    left: 0px;
+    top: 185px;
+    position: absolute;
+    border: 1px solid black;
+  }
+  #ti_widget_label1 {
+    text-align: left;
+    text-decoration: none;
+    font-weight: normal;
+    font-style: normal;
+    font-size: inherit;
+    white-space: nowrap;
+    left: 10px;
+    top: 30px;
+    position: absolute;
+  }
+  #ti_widget_value1 {
+    text-align: left;
+    text-decoration: none;
+    font-weight: normal;
+    font-style: normal;
+    font-size: inherit;
+    white-space: nowrap;
+    left: 250px;
+    top: 30px;
+    position: absolute;
+  }
+  #ti_widget_label2 {
+    text-align: left;
+    text-decoration: none;
+    font-weight: normal;
+    font-style: normal;
+    font-size: inherit;
+    white-space: nowrap;
+    left: 10px;
+    top: 60px;
+    position: absolute;
+  }
+  #ti_widget_value2 {
+    text-align: left;
+    text-decoration: none;
+    font-weight: normal;
+    font-style: normal;
+    font-size: inherit;
+    white-space: nowrap;
+    left: 250px;
+    top: 60px;
+    position: absolute;
+  }
+  #ti_widget_label3 {
+    text-align: left;
+    text-decoration: none;
+    font-weight: normal;
+    font-style: normal;
+    font-size: inherit;
+    white-space: nowrap;
+    left: 10px;
+    top: 90px;
+    position: absolute;
+  }
+  #ti_widget_value3 {
+    text-align: left;
+    text-decoration: none;
+    font-weight: normal;
+    font-style: normal;
+    font-size: inherit;
+    white-space: nowrap;
+    left: 250px;
+    top: 90px;
+    position: absolute;
+  }
+  #ti_widget_label4 {
+    text-align: left;
+    text-decoration: none;
+    font-weight: normal;
+    font-style: normal;
+    font-size: inherit;
+    white-space: nowrap;
+    left: 10px;
+    top: 120px;
+    position: absolute;
+  }
+  #ti_widget_value4 {
+    text-align: left;
+    text-decoration: none;
+    font-weight: normal;
+    font-style: normal;
+    font-size: inherit;
+    white-space: nowrap;
+    left: 250px;
+    top: 120px;
+    position: absolute;
+  }
+  #ti_widget_label5 {
+    text-align: left;
+    text-decoration: none;
+    font-weight: normal;
+    font-style: normal;
+    font-size: inherit;
+    white-space: nowrap;
+    left: 10px;
+    top: 150px;
+    position: absolute;
+  }
+  #ti_widget_value5 {
+    text-align: left;
+    text-decoration: none;
+    font-weight: normal;
+    font-style: normal;
+    font-size: inherit;
+    white-space: nowrap;
+    left: 250px;
+    top: 150px;
+    position: absolute;
+  }
+  #ti_widget_label6 {
+    text-align: left;
+    text-decoration: none;
+    font-weight: normal;
+    font-style: normal;
+    font-size: inherit;
+    white-space: nowrap;
+    left: 10px;
+    top: 180px;
+    position: absolute;
+  }
+  #ti_widget_value6 {
+    text-align: left;
+    text-decoration: none;
+    font-weight: normal;
+    font-style: normal;
+    font-size: inherit;
+    white-space: nowrap;
+    left: 250px;
+    top: 180px;
+    position: absolute;
+  }
+  #ti_widget_label7 {
+    text-align: left;
+    text-decoration: none;
+    font-weight: normal;
+    font-style: normal;
+    font-size: inherit;
+    white-space: nowrap;
+    left: 10px;
+    top: 210px;
+    position: absolute;
+  }
+  #ti_widget_value7 {
+    text-align: left;
+    text-decoration: none;
+    font-weight: normal;
+    font-style: normal;
+    font-size: inherit;
+    white-space: nowrap;
+    left: 250px;
+    top: 210px;
+    position: absolute;
+  }
+  #ti_widget_label8 {
+    text-align: left;
+    text-decoration: none;
+    font-weight: normal;
+    font-style: normal;
+    font-size: inherit;
+    white-space: nowrap;
+    left: 10px;
+    top: 240px;
+    position: absolute;
+  }
+  #ti_widget_value8 {
+    text-align: left;
+    text-decoration: none;
+    font-weight: normal;
+    font-style: normal;
+    font-size: inherit;
+    white-space: nowrap;
+    left: 250px;
+    top: 240px;
+    position: absolute;
+  }
+  #ti_widget_label9 {
+    text-align: left;
+    text-decoration: none;
+    font-weight: normal;
+    font-style: normal;
+    font-size: inherit;
+    white-space: nowrap;
+    left: 10px;
+    top: 270px;
+    position: absolute;
+  }
+  #ti_widget_value9 {
+    text-align: left;
+    text-decoration: none;
+    font-weight: normal;
+    font-style: normal;
+    font-size: inherit;
+    white-space: nowrap;
+    left: 250px;
+    top: 270px;
+    position: absolute;
+  }
+  #ti_widget_label_rcs_desired {
+    text-align: left;
+    text-decoration: none;
+    font-weight: normal;
+    font-style: normal;
+    font-size: inherit;
+    white-space: nowrap;
+    left: 30px;
+    top: 40px;
+    position: absolute;
+  }
+  #ti_widget_textbox_rcs_desired {
+    font-size: inherit;
+    left: 310px;
+    top: 35px;
+    position: absolute;
+    width: 120px;
+  }
+  #ti_widget_label_peak_grouping {
+    text-align: left;
+    text-decoration: none;
+    font-weight: normal;
+    font-style: normal;
+    font-size: inherit;
+    white-space: nowrap;
+    left: 30px;
+    top: 40px;
+    position: absolute;
+  }
+  #ti_widget_checkbox_grouppeak_rangedir {
+    left: 300px;
+    top: 40px;
+    position: absolute;
+  }
+  #ti_widget_checkbox_grouppeak_dopplerdir {
+    text-align: left;
+    font-size: inherit;
+    left: 300px;
+    top: 60px;
+    position: absolute;
+  }
+  #ti_widget_label_range_sensitvity {
+    text-align: left;
+    text-decoration: none;
+    font-weight: normal;
+    font-style: normal;
+    font-size: inherit;
+    white-space: nowrap;
+    left: 30px;
+    top: 125px;
+    position: absolute;
+  }
+  #ti_widget_textbox_range_sensitivity {
+    font-size: inherit;
+    left: 300px;
+    top: 120px;
+    position: absolute;
+    width: 190px;
+  }
+  #ti_widget_label_doppler_sensitivity {
+    left: 30px;
+    top: 160px;
+    position: absolute;
+  }
+  #ti_widget_textbox_doppler_sensitivity {
+    font-size: inherit;
+    left: 302px;
+    top: 155px;
+    position: absolute;
+    width: 190px;
+  }
+  #ti_widget_checkbox_noise_profile {
+    text-align: left;
+    font-size: inherit;
+    left: 30px;
+    top: 85px;
+    position: absolute;
+  }
+  #ti_widget_checkbox_statistics {
+    text-align: left;
+    font-size: inherit;
+    left: 297.986px;
+    top: 85px;
+    position: absolute;
+  }
+  #ti_widget_label_rcs_rmax {
+    text-align: left;
+    text-decoration: none;
+    font-weight: normal;
+    font-style: normal;
+    font-size: inherit;
+    white-space: nowrap;
+    left: 30px;
+    top: 100px;
+    position: absolute;
+  }
+  #ti_widget_value_rcs_rmax {
+    text-align: left;
+    text-decoration: none;
+    font-weight: normal;
+    font-style: normal;
+    font-size: inherit;
+    white-space: nowrap;
+    left: 310px;
+    top: 100px;
+    position: absolute;
+  }
+  #ti_widget_label_rmax_rcs_desired {
+    text-align: left;
+    text-decoration: none;
+    font-weight: normal;
+    font-style: normal;
+    font-size: inherit;
+    white-space: nowrap;
+    left: 30px;
+    top: 70px;
+    position: absolute;
+  }
+  #ti_widget_value_rmax_rcs_desired {
+    text-align: left;
+    text-decoration: none;
+    font-weight: normal;
+    font-style: normal;
+    font-size: inherit;
+    white-space: nowrap;
+    left: 310px;
+    top: 70px;
+    position: absolute;
+  }
+  #ti_widget_button_reset_profile {
+    left: 430px;
+    top: 45px;
+    position: absolute;
+  }
+  #ti_widget_slider_frame_rate {
+    width: 200px;
+    left: 290px;
+    top: 35px;
+    position: absolute;
+    height: 30px;
+  }
+  #ti_widget_input_frame_rate {
+    text-align: left;
+    text-decoration: none;
+    font-weight: normal;
+    font-style: normal;
+    font-size: inherit;
+    white-space: nowrap;
+    left: 504px;
+    top: 40px;
+    position: absolute;
+    opacity: 1;
+    width: 50px;
+    border: 1px solid black;
+    background-color: rgb(229, 229, 229);
+  }
+  #ti_widget_label_frame_rate {
+    text-align: left;
+    text-decoration: none;
+    font-weight: normal;
+    font-style: normal;
+    font-size: inherit;
+    white-space: nowrap;
+    left: 30px;
+    top: 40px;
+    position: absolute;
+  }
+  #label_help_about {
+    margin: 20px;
+  }
+  #textbox_help_about {
+    width: 500px;
+    margin: 0px 20px;
+    padding: 2px;
+    overflow: auto;
+    resize: none;
+  }
+  #ti_widget_button_start_stop {
+    position: absolute;
+    top: 80px;
+    left: 255px;
+  }
+  #ti_widget_object_detection {
+    text-align: left;
+    text-decoration: none;
+    font-weight: normal;
+    font-style: normal;
+    font-size: inherit;
+    white-space: nowrap;
+    top: 10px;
+    left: 10px;
+    position: absolute;
+  }
+  #ti_widget_label_status_message {
+    text-align: left;
+    text-decoration: none;
+    font-weight: bold;
+    font-style: normal;
+    font-size: inherit;
+    white-space: nowrap;
+    top: 0px;
+    left: 13px;
+    position: absolute;
+    height: 40px;
+    width: 550px;
+  }
+  #ti_widget_filemenu {
+    display: none;
+  }
+  #ti_widget_checkbox_clutter_removal {
+    left: 300px;
+    top: 90px;
+    position: absolute;
+  }
+  #ti_widget_label_Algo {
+    text-align: left;
+    text-decoration: none;
+    font-weight: normal;
+    font-style: normal;
+    font-size: inherit;
+    white-space: nowrap;
+    left: 30px;
+    top: 90px;
+    position: absolute;
+  }
+  #ti_widget_container_platform_selection {
+    height: 130px;
+    width: 600px;
+    border: 1px solid black;
+    text-align: left;
+    text-decoration: none;
+    font-weight: normal;
+    font-style: normal;
+    font-size: inherit;
+    overflow: auto;
+    top: 10px;
+    position: absolute;
+  }
+  #ti_widget_platform_selection_label {
+    left: 10px;
+    position: absolute;
+    top: 10px;
+  }
+  #ti_widget_label_sdk_version {
+    text-align: left;
+    text-decoration: none;
+    font-weight: normal;
+    font-style: normal;
+    font-size: inherit;
+    white-space: nowrap;
+    left: 30px;
+    top: 70px;
+    position: absolute;
+  }
+  #ti_widget_droplist_sdk_version {
+    width: 190px;
+    height: auto;
+    font-size: inherit;
+    left: 300px;
+    top: 70px;
+    position: absolute;
+  }
+  #ti_widget_container_base_config {
+    height: 70px;
+    width: 590px;
+    text-align: left;
+    text-decoration: none;
+    font-weight: normal;
+    font-style: normal;
+    font-size: inherit;
+    overflow: auto;
+    left: 0px;
+    top: 0px;
+    position: absolute;
+  }
+  #ti_widget_container_scene_selection {
+    height: 225px;
+    width: 590px;
+    text-align: left;
+    text-decoration: none;
+    font-weight: normal;
+    font-style: normal;
+    font-size: inherit;
+    overflow: auto;
+    top: 58px;
+    position: absolute;
+  }
+  #ti_widget_container_object_detection {
+    height: 260px;
+    width: 590px;
+    text-align: left;
+    text-decoration: none;
+    font-weight: normal;
+    font-style: normal;
+    font-size: inherit;
+    overflow: auto;
+    top: 278px;
+    position: absolute;
+  }
+  #ti_widget_container_buttons {
+    height: 90px;
+    width: 590px;
+    text-align: left;
+    text-decoration: none;
+    font-weight: normal;
+    font-style: normal;
+    font-size: inherit;
+    overflow: auto;
+    top: 638px;
+    position: absolute;
+  }
+  #ti_widget_button_record {
+    left: 80px;
+    top: 80px;
+    position: absolute;
+  }
+  #ti_widget_label_record_file_size_limit {
+    text-align: left;
+    text-decoration: none;
+    font-weight: normal;
+    font-style: normal;
+    font-size: inherit;
+    white-space: nowrap;
+    left: 15px;
+    top: 10px;
+    position: absolute;
+  }
+  #ti_widget_textbox_record_file_size_limit {
+    left: 165px;
+    top: 5px;
+    position: absolute;
+    width: 50px;
+  }
+  #ti_widget_label_record_time {
+    text-align: left;
+    text-decoration: none;
+    font-weight: normal;
+    font-style: normal;
+    font-size: inherit;
+    white-space: nowrap;
+    left: 15px;
+    top: 40px;
+    position: absolute;
+  }
+  #ti_widget_textbox_record_time {
+    left: 165px;
+    top: 35px;
+    position: absolute;
+    width: 50px;
+  }
+  #ti_widget_container_sensor_stop {
+    height: 130px;
+    width: 395px;
+    border: 1px solid black;
+    text-align: left;
+    text-decoration: none;
+    font-weight: normal;
+    font-style: normal;
+    font-size: inherit;
+    overflow: auto;
+    left: 0px;
+    top: 5px;
+    position: absolute;
+  }
+  #ti_widget_container_record {
+    height: 130px;
+    width: 225px;
+    border: 1px solid black;
+    text-align: left;
+    text-decoration: none;
+    font-weight: normal;
+    font-style: normal;
+    font-size: inherit;
+    overflow: auto;
+    left: 400px;
+    top: 5px;
+    position: absolute;
+  }
+  #ti_widget_label_compensation {
+    left: 30px;
+    top: 195px;
+    position: absolute;
+  }
+  #ti_widget_textbox_compensation {
+    font-size: inherit;
+    left: 30px;
+    top: 215px;
+    position: absolute;
+    width: 550px;
+  }
+</style>
+
+<ti-widget-readme background-color="#ffffff" elevation="5" title-text='How to use "mmWave Demo Visualizer"' id="readmeViewer" class="_TI_" readme-file-exists></ti-widget-readme>
+<ti-core-stylesheets class="_TI_" id="ti_core_stylesheets"></ti-core-stylesheets>
+<style>
+  #ti_widget_menubar {
+    background-color: rgb(204, 0, 0);
+  }
+  html .ti-theme paper-tabs {
+    color: rgb(35, 31, 32);
+    background-color: rgb(229, 229, 229);
+  }
+  paper-tabs paper-tab.iron-selected {
+    color: rgb(255, 255, 255);
+    background-color: rgb(17, 85, 102);
+  }
+  .labelhdr {
+    color: rgb(28, 153, 196) !important;
+  }
+  ti-widget-button {
+    background-color: rgb(17, 136, 153) !important;
+  }
+</style>
+
+<ti-widget-menubar product-name="mmWave Demo Visualizer" id="ti_widget_menubar" pin horizontal class="_TI_ x-scope ti-widget-menubar-0" layout>
+    <ti-widget-filemenu id="ti_widget_filemenu" class="_TI_" layout></ti-widget-filemenu>
+    <ti-widget-optionsmenu id="ti_widget_optionsmenu" class="_TI_" layout></ti-widget-optionsmenu>
+    <ti-widget-helpmenu id="ti_widget_helpmenu" class="_TI_" layout>
+        <ti-widget-menuaction name="Visualizer User Guide" icon-name="av:library-books" id="ti_widget_menuaction_userguide" class="_TI_ subMenuItem"></ti-widget-menuaction>
+        <ti-widget-menuaction name="Download or Clone Visualizer" icon-name="icons:get-app" id="ti_widget_menuaction_download" class="_TI_ subMenuItem"></ti-widget-menuaction>
+    </ti-widget-helpmenu>
+    <ti-widget-toast message="some messages here" duration="3000" id="ti_widget_toast_common" class="_TI_ toolMenuItem x-scope ti-widget-toast-0"></ti-widget-toast>
+</ti-widget-menubar>
+
+<ti-widget-container font-size="inherit" auto-scroll font-style="normal" font-weight="normal" text-align="left" text-decoration="none" visible id="viewport" title class="_TI_ viewport" pin>
+    <ti-widget-tabcontainer selected-index="0" selected-label="Configure" id="ti_widget_tabcontainer_main" class="_TI_" layout>
+        <ti-widget-tab name="Configure" icon-style="width:25px;padding-right:5px;" font-size="inherit" font-style="normal" font-weight="normal" text-align="left" text-decoration="none" visible id="ti_widget_tab_cfg" title class="_TI_ iron-selected" end-justified>
+            <ti-widget-container font-size="inherit" auto-scroll font-style="normal" font-weight="normal" text-align="left" text-decoration="none" visible id="ti_widget_container_profile_selection" class="_TI_" title>
+                <ti-widget-container font-size="inherit" auto-scroll font-style="normal" font-weight="normal" text-align="left" text-decoration="none" visible id="ti_widget_container_base_config" title class="_TI_">
+                    <ti-widget-label label="Frequency Band (GHz)" text-align="left" font-size="inherit" font-style="normal" font-weight="normal" text-decoration="none" visible tooltip="Select between narrow band or wide band" id="ti_widget_label_freq_band" class="_TI_" title></ti-widget-label>
+                    <ti-widget-droplist selected-index="-1" values="76|77" labels="76-77|77-81" font-size="inherit" font-style="normal" font-weight="normal" text-decoration="none" text-align="left" visible tooltip="Select between narrow band or wide band" id="ti_widget_droplist_freq_band" class="_TI_ x-scope ti-widget-droplist-0" onchange="onFreqBand()"></ti-widget-droplist>
+                    <ti-widget-label label="Desirable Configuration" text-align="left" font-size="inherit" font-style="normal" font-weight="normal" text-decoration="none" visible tooltip="Select the configuration to tune the mmWave radar parameters as per your scenario" id="ti_widget_label_subprofile" class="_TI_" title></ti-widget-label>
+                    <ti-widget-droplist selected-index="-1" values="best_range_res|best_vel_res|best_range" labels="Best Range Resolution|Best Velocity Resolution|Best Range" font-size="inherit" font-style="normal" font-weight="normal" text-decoration="none" text-align="left" visible tooltip="Select the configuration to tune the mmWave radar parameters as per your scenario" id="ti_widget_droplist_subprofile" class="_TI_ x-scope ti-widget-droplist-0" onchange="onSubprofile()"></ti-widget-droplist>
+                </ti-widget-container>
+                <ti-widget-container font-size="inherit" auto-scroll font-style="normal" font-weight="normal" text-align="left" text-decoration="none" visible id="ti_widget_container_scene_selection" title class="_TI_">
+                    <ti-widget-label label="Scene Selection" text-align="left" font-size="large" font-style="normal" font-weight="900" text-decoration="none" visible tooltip="This section tunes the mmWave Radar Front End" id="ti_widget_label_profile_selection" class="_TI_ labelhdr" title></ti-widget-label>
+                    <ti-widget-label label="Range Resolution (m)" text-align="left" font-size="inherit" font-style="normal" font-weight="normal" text-decoration="none" visible tooltip="Select the desired Range Resolution in meters." id="ti_widget_label_range_resolution" class="_TI_" title></ti-widget-label>
+                    <ti-widget-slider value="20" min-value="20" max-value="100" increment="10" labels="0.039,0.047" font-size="small" font-style="normal" font-weight="normal" hide-pin-value intermediate-changes visible tooltip="Select the desired Range Resolution in meters" id="ti_widget_slider_range_resolution" class="_TI_ x-scope ti-widget-slider-0"></ti-widget-slider>
+                    <ti-widget-label label="Maximum Unambiguous Range (m)" text-align="left" font-size="inherit" font-style="normal" font-weight="normal" text-decoration="none" visible tooltip="Select the desired Maximum Unambiguous Range in meters" id="ti_widget_label_max_range" class="_TI_" title></ti-widget-label>
+                    <ti-widget-slider value="1.1" min-value="1.1" max-value="4.1" increment="0.01" labels="1.1,4.1" font-size="small" font-style="normal" font-weight="normal" hide-pin-value intermediate-changes visible tooltip="Select the desired Maximum Unambiguous Range in meters" id="ti_widget_slider_max_range" class="_TI_ x-scope ti-widget-slider-0"></ti-widget-slider>
+                    <ti-widget-label label="Maximum Radial Velocity (m/s)" text-align="left" font-size="inherit" font-style="normal" font-weight="normal" text-decoration="none" visible tooltip="Select the desired Maximum Radial Velocity in meters/second" id="ti_widget_label_max_radial_vel" class="_TI_" title></ti-widget-label>
+                    <ti-widget-slider value="0.31" min-value="0.31" max-value="1.35" increment="0.01" labels="0.31,1.35" font-size="small" font-style="normal" font-weight="normal" hide-pin-value intermediate-changes visible tooltip="Select the desired Maximum Radial Velocity in meters/second" id="ti_widget_slider_max_radial_vel" class="_TI_ x-scope ti-widget-slider-0"></ti-widget-slider>
+                    <ti-widget-label label="Radial Velocity Resolution (m/s)" text-align="left" font-size="inherit" font-style="normal" font-weight="normal" text-decoration="none" visible tooltip="Select the desired Radial Velocity Resolution in meters/second" id="ti_widget_label_radial_vel_resolution" class="_TI_" title></ti-widget-label>
+                    <ti-widget-droplist selected-index="-1" labels="item1|item2" font-size="inherit" font-style="normal" font-weight="normal" text-decoration="none" text-align="left" visible tooltip="Select the desired Radial Velocity Resolution in meters/second" id="ti_widget_droplist_radial_vel_resolution" class="_TI_ x-scope ti-widget-droplist-0" onchange="onRadialVelResolution()"></ti-widget-droplist>
+                    <ti-widget-label label="Frame Rate (fps)" text-align="left" font-size="inherit" font-style="normal" font-weight="normal" text-decoration="none" visible tooltip="Select the rate at which measurement data needs  to be shipped out of mmWave device. Faster rate limits the number of plots/measurement data that you can capture from mmWave Devcie" id="ti_widget_label_frame_rate" class="_TI_" title></ti-widget-label>
+                    <ti-widget-slider value="21" min-value="1" max-value="30" increment="1" labels="1,30" font-size="small" font-style="normal" font-weight="normal" visible tooltip="Select the rate at which measurement data needs  to be shipped out of mmWave device. Faster rate limits the number of plots/measurement data that you can capture from mmWave Devcie" id="ti_widget_slider_frame_rate" class="_TI_ x-scope ti-widget-slider-0"></ti-widget-slider>
+                    <ti-widget-label label="<value>" text-align="center" font-size="inherit" font-style="normal" font-weight="normal" text-decoration="none" visible tooltip="Displays user selected range resolution in meters" id="ti_widget_input_range_res_sel" title class="_TI_" center-justified></ti-widget-label>
+                    <ti-widget-label label="<value>" text-align="center" font-size="inherit" font-style="normal" font-weight="normal" text-decoration="none" visible tooltip="Displays user selected Maximum Unambiguous Range in meters" id="ti_widget_input_max_range_sel" title class="_TI_" center-justified></ti-widget-label>
+                    <ti-widget-label label="<value>" text-align="center" font-size="inherit" font-style="normal" font-weight="normal" text-decoration="none" visible tooltip="Displays user selected Maximum Radial Velocity in meters/second" id="ti_widget_input_max_radial_vel_sel" title class="_TI_" center-justified></ti-widget-label>
+                    <ti-widget-label label="<value>" text-align="center" font-size="inherit" font-style="normal" font-weight="normal" text-decoration="none" visible tooltip="Displays user selected Radial Velocity Resolution in meters/second" id="ti_widget_input_radial_vel_res_sel" title class="_TI_" center-justified></ti-widget-label>
+                    <ti-widget-label label="<value>" text-align="center" font-size="inherit" font-style="normal" font-weight="normal" text-decoration="none" visible tooltip="Displays user selected frame rate" id="ti_widget_input_frame_rate" class="_TI_" title center-justified></ti-widget-label>
+                </ti-widget-container>
+                <ti-widget-container font-size="inherit" auto-scroll font-style="normal" font-weight="normal" text-align="left" text-decoration="none" visible id="ti_widget_container_object_detection" title class="_TI_">
+                    <ti-widget-label label="Object Detection" text-align="left" font-size="large" font-style="normal" font-weight="900" text-decoration="none" visible tooltip="This section tunes the higher layer processing algorithms" id="ti_widget_object_detection" class="_TI_ labelhdr" title></ti-widget-label>
+                    <ti-widget-label label="Group Peaks from Same Object" text-align="left" font-size="inherit" font-style="normal" font-weight="normal" text-decoration="none" visible tooltip="Enable/Disable peak grouping option for Range and Doppler direction. This affects how many points per object are detected." id="ti_widget_label_peak_grouping" class="_TI_" title></ti-widget-label>
+                    <ti-widget-checkbox label="Range Direction" checked text-align="left" font-size="inherit" font-style="normal" font-weight="normal" text-decoration="none" visible tooltip="Enable/Disable peak grouping option for Range direction. This affects how many points per object are detected." id="ti_widget_checkbox_grouppeak_rangedir" class="_TI_"></ti-widget-checkbox>
+                    <ti-widget-checkbox label="Doppler Direction" checked text-align="left" font-size="inherit" font-style="normal" font-weight="normal" text-decoration="none" visible tooltip="Enable/Disable peak grouping option for Doppler direction. This affects how many points per object are detected." id="ti_widget_checkbox_grouppeak_dopplerdir" class="_TI_"></ti-widget-checkbox>
+                    <ti-widget-label label="Range Detection Threshold (0-100dB)" text-align="left" font-size="inherit" font-style="normal" font-weight="normal" text-decoration="none" visible tooltip="Select the detection threshold to apply in Range direction. Tune this parameter as per your surrounding enviornment and intended use case. This affects how objects are detected " id="ti_widget_label_range_sensitvity" class="_TI_" title></ti-widget-label>
+                    <ti-widget-textbox value="58" text-align="left" font-size="inherit" font-style="normal" font-weight="normal" text-decoration="none" visible tooltip="Select the detection threshold to apply in Range direction. Tune this parameter as per your surrounding enviornment and intended use case. This affects how objects are detected" id="ti_widget_textbox_range_sensitivity" class="_TI_ x-scope ti-widget-textbox-0" onchange="onRangeSensitivity()"></ti-widget-textbox>
+                    <ti-widget-label label="Doppler Detection Threshold (0-100dB)" text-align="left" font-size="inherit" font-style="normal" font-weight="normal" text-decoration="none" visible tooltip="Select the detection threshold to apply in Doppler direction. Tune this parameter as per your surrounding enviornment and intended use case. This affects how objects are detected" id="ti_widget_label_doppler_sensitivity" class="_TI_" title></ti-widget-label>
+                    <ti-widget-textbox value="58" text-align="left" font-size="inherit" font-style="normal" font-weight="normal" text-decoration="none" visible tooltip="Select the detection threshold to apply in Doppler direction. Tune this parameter as per your surrounding enviornment and intended use case. This affects how objects are detected" id="ti_widget_textbox_doppler_sensitivity" class="_TI_ x-scope ti-widget-textbox-0" onchange="onDopplerSensitivity()"></ti-widget-textbox>
+                    <ti-widget-checkbox label="Remove Static Clutter" checked text-align="left" font-size="inherit" font-style="normal" font-weight="normal" text-decoration="none" visible tooltip="Enable/Disable static clutter removal." id="ti_widget_checkbox_clutter_removal" class="_TI_"></ti-widget-checkbox>
+                    <ti-widget-label label="Additional Algorithm Processing" text-align="left" font-size="inherit" font-style="normal" font-weight="normal" text-decoration="none" visible tooltip="Additional options." id="ti_widget_label_Algo" class="_TI_" title></ti-widget-label>
+                    <ti-widget-label label="Range/Angle Bias Compensation config" text-align="left" font-size="inherit" font-style="normal" font-weight="normal" text-decoration="none" visible tooltip="Run the measurement procedure as provided with the SDK documentation and collect the compensation config from Console messages. Then take any one complete line of config starting with compRangeBiasAndRxChanPhase and paste that config here to apply in subsequent runs" id="ti_widget_label_compensation" class="_TI_" title></ti-widget-label>
+                    <ti-widget-textbox value="compRangeBiasAndRxChanPhase 0.0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0" text-align="left" font-size="inherit" font-style="normal" font-weight="normal" text-decoration="none" visible tooltip="Run the measurement procedure as provided with the SDK documentation and collect the compensation config from Console messages. Then take any one complete line of config starting with compRangeBiasAndRxChanPhase and paste that config here to apply in subsequent runs" id="ti_widget_textbox_compensation" class="_TI_ x-scope ti-widget-textbox-0" onchange="onDopplerSensitivity()"></ti-widget-textbox>
+                </ti-widget-container>
+                <ti-widget-container font-size="inherit" auto-scroll font-style="normal" font-weight="normal" text-align="left" text-decoration="none" visible id="ti_widget_container_plot_selection" class="_TI_" title>
+                    <ti-widget-label label="Plot Selection" text-align="left" font-size="large" font-style="normal" font-weight="900" text-decoration="none" visible tooltip="Select the plots that you wish to see on Plots tab. Selecting more than 2 plots need frame rate to be around 10 fps. Selecting Heatmaps require frame rate to be 1 fps." id="ti_widget_label_plot_selection" class="_TI_ labelhdr" title></ti-widget-label>
+                    <ti-widget-checkbox label="Range Profile" text-align="left" font-size="inherit" font-style="normal" font-weight="normal" text-decoration="none" visible tooltip="Select this to get range profile stream from mmWave device and to see the range profile for 0 Doppler (static objects) on Range Profile plot (blue line)" id="ti_widget_checkbox_range_profile" class="_TI_"></ti-widget-checkbox>
+                    <ti-widget-checkbox label="Noise Profile" checked text-align="left" font-size="inherit" font-style="normal" font-weight="normal" text-decoration="none" visible tooltip="Select this to get noise profile stream from mmWave device and to see the noise profile on Range Profile plot (green line)" id="ti_widget_checkbox_noise_profile" class="_TI_"></ti-widget-checkbox>
+                    <ti-widget-checkbox label="Range Azimuth Heat Map" checked text-align="left" font-size="inherit" font-style="normal" font-weight="normal" text-decoration="none" visible tooltip="Select this to get Range-Azimuth heapmap stream from mmWave device and to see the Range-Azimuth heatmap. Set frame rate to 1 fps for the heatmap functionality to work." id="ti_widget_checkbox_azimuth_heatmap" class="_TI_"></ti-widget-checkbox>
+                    <ti-widget-checkbox label="Range Doppler Heat Map" checked text-align="left" font-size="inherit" font-style="normal" font-weight="normal" text-decoration="none" visible tooltip="Select this to get Range-Doppler heapmap stream from mmWave device and to see the Range-Doppler heatmap. Set frame rate to 1 fps for the heatmap functionality to work." id="ti_widget_checkbox_doppler_heatmap" class="_TI_"></ti-widget-checkbox>
+                    <ti-widget-checkbox label="Statistics" text-align="left" font-size="inherit" font-style="normal" font-weight="normal" text-decoration="none" visible tooltip="Select this to get statistics stream from mmWave device and to see the CPU load plot and Profiling parameters on the Plot tab." id="ti_widget_checkbox_statistics" class="_TI_"></ti-widget-checkbox>
+                    <ti-widget-checkbox label="Scatter Plot" text-align="left" font-size="inherit" font-style="normal" font-weight="normal" text-decoration="none" visible tooltip="Select this to get detected object stream from mmWave device and to see the scatter plot and the Doppler-Range plot" id="ti_widget_checkbox_scatter_plot" class="_TI_"></ti-widget-checkbox>
+                </ti-widget-container>
+                <ti-widget-container font-size="inherit" auto-scroll font-style="normal" font-weight="normal" text-align="left" text-decoration="none" visible id="ti_widget_container_buttons" title class="_TI_">
+                    <ti-widget-label label="<temp>" text-align="left" font-size="inherit" font-color="#ff0000" font-style="normal" font-weight="bold" text-decoration="none" wrap nonvisible tooltip="Correct the error and try sending configuration again" id="ti_widget_label_status_message" class="_TI_"></ti-widget-label>
+                    <ti-widget-button label="Send Config to mmWave Device" button-type="default" raised visible bindable-trigger="15" id="ti_widget_button_send_command" class="_TI_ x-scope ti-widget-button-0" onclick="onSendCommand()" elevation="1" animated title></ti-widget-button>
+                    <ti-widget-button label="Save Config to PC" button-type="default" raised visible bindable-trigger="10" id="ti_widget_button_save_config" class="_TI_ x-scope ti-widget-button-0" onclick="onSaveCfg()" elevation="1" animated title></ti-widget-button>
+                    <ti-widget-button label="Reset Selection" button-type="default" raised visible bindable-trigger="18" id="ti_widget_button_reset_profile" class="_TI_ x-scope ti-widget-button-0" onclick="onResetProfile()" title elevation="1" animated></ti-widget-button>
+                </ti-widget-container>
+            </ti-widget-container>
+            <ti-widget-container font-size="inherit" auto-scroll font-style="normal" font-weight="normal" text-align="left" text-decoration="none" visible id="ti_widget_container_selected_values" class="_TI_" title>
+                <ti-widget-label label="RCS " text-align="left" font-size="large" font-style="normal" font-weight="900" text-decoration="none" visible id="ti_widget_label_RCS_calc" class="_TI_ labelhdr" title></ti-widget-label>
+                <ti-widget-label label="RCS at Max Unambiguous Range (sq. m)" text-align="left" font-size="inherit" font-style="normal" font-weight="normal" text-decoration="none" visible tooltip='This is for information purposes only to guide the user to set the slider value for "Maximum unambiguous range" accordingly. ' id="ti_widget_label_rcs_rmax" class="_TI_" title></ti-widget-label>
+                <ti-widget-label label="<calculated_value>" text-align="left" font-size="inherit" font-style="normal" font-weight="normal" text-decoration="none" visible tooltip='This is for information purposes only to guide the user to set the slider value for "Maximum unambiguous range" accordingly. ' id="ti_widget_value_rcs_rmax" class="_TI_" title></ti-widget-label>
+                <ti-widget-label label="Maximum Range for desired RCS (m)" text-align="left" font-size="inherit" font-style="normal" font-weight="normal" text-decoration="none" visible tooltip='This is for information purposes only to guide the user to set the slider value for "Maximum unambiguous range" accordingly. ' id="ti_widget_label_rmax_rcs_desired" class="_TI_" title></ti-widget-label>
+                <ti-widget-label label="<calculated_value>" text-align="left" font-size="inherit" font-style="normal" font-weight="normal" text-decoration="none" visible tooltip='This is for information purposes only to guide the user to set the slider value for "Maximum unambiguous range" accordingly. ' id="ti_widget_value_rmax_rcs_desired" class="_TI_" title></ti-widget-label>
+                <ti-widget-label label="Desired Radar Cross Section (sq. m)" text-align="left" font-size="inherit" font-style="normal" font-weight="normal" text-decoration="none" visible tooltip="Select the desired RCS for getting the Maximum Range at which an object of this RCS is likely to be detected based on the scene and object detection parameters selected on the left hand side. Hint for approximate values: Truck->100 sq.m, Car->10 sq.m, Motorcycle->3.2 sq.m, Adult->1 sq.m, Child->0.5 sq.m" id="ti_widget_label_rcs_desired" class="_TI_" title></ti-widget-label>
+                <ti-widget-textbox value="0.5" text-align="left" font-size="inherit" font-style="normal" font-weight="normal" text-decoration="none" visible tooltip="Select the desired RCS for getting the Maximum Range at which an object of this RCS is likely to be detected based on the scene and object detection parameters selected on the left hand side. Hint for approximate values: Truck->100 sq.m, Car->10 sq.m, Motorcycle->3.2 sq.m, Adult->1 sq.m, Child->0.5 sq.m" id="ti_widget_textbox_rcs_desired" class="_TI_ x-scope ti-widget-textbox-0" onchange="onRCS()"></ti-widget-textbox>
+            </ti-widget-container>
+            <ti-widget-container font-size="inherit" auto-scroll font-style="normal" font-weight="normal" text-align="left" text-decoration="none" visible tooltip="These are the console messages that are exchanged with the mmWave device during configuration. A successful configuration should end with 'sensorStart' command going to the device and 'Done' message acknowledged back from the device." id="ti_widget_container_cfg_console" class="_TI_" title="These are the console messages that are exchanged with the mmWave device during configuration. A successful configuration should end with 'sensorStart' command going to the device and 'Done' message acknowledged back from the device.">
+                <ti-widget-label label="Console Messages" text-align="left" font-size="large" font-style="normal" font-weight="900" text-decoration="none" visible id="ti_widget_label_cfg_console" class="_TI_ labelhdr" title></ti-widget-label>
+                <textarea class="_TI_" visible text-decoration="none" font-weight="normal" font-style="normal" font-size="inherit" text-align="left" readonly rows="38" id="ti_widget_textbox_cfg_console"></textarea>
+            </ti-widget-container>
+            <ti-widget-container font-size="inherit" auto-scroll font-style="normal" font-weight="normal" text-align="left" text-decoration="none" visible id="ti_widget_container_platform_selection" class="_TI_" title>
+                <ti-widget-label label="Setup Details" text-align="left" font-size="large" font-style="normal" font-weight="900" text-decoration="none" visible tooltip="Select parameters related to the setup connected to this instance of Vizualizer. Changing the setup in the GUI requires user to reboot the board and re-run the demo." id="ti_widget_platform_selection_label" class="_TI_ labelhdr" title></ti-widget-label>
+                <ti-widget-label label="Platform" text-align="left" font-size="inherit" font-style="normal" font-weight="normal" text-decoration="none" visible tooltip="Select the correct mmWave Device to which this APP is connected to." id="ti_widget_label_platform" class="_TI_" title></ti-widget-label>
+                <ti-widget-droplist selected-index="-1" values="xWR14xx|xWR16xx" labels="xWR14xx|xWR16xx" font-size="inherit" font-style="normal" font-weight="normal" text-decoration="none" text-align="left" visible tooltip="Select the correct mmWave Device to which this APP is connected to." id="ti_widget_droplist_platform" class="_TI_ x-scope ti-widget-droplist-0" onchange="onPlatform()"></ti-widget-droplist>
+                <ti-widget-label label="Antenna Config (Azimuth Res - deg)" text-align="left" font-size="inherit" font-style="normal" font-weight="normal" text-decoration="none" visible tooltip="Select the azimuth resolution and elevation (xWR14xx only) configuration for TI mmWave EVMs. Options are:15 deg (4Rx,2Tx), 30 deg (4Rx, 1Tx), 90 deg (2Rx, 1Tx), None (1Tx, 1Rx), 15 deg + Elevation (4 Rx, 3 Tx for xWR14xx only).Please reboot the board before sending new config with this parameter changed as compared to last config." id="ti_widget_label_azimuth_resolution" class="_TI_" title></ti-widget-label>
+                <ti-widget-droplist selected-index="0" selected-value="15" selected-text="4Rx,2Tx(15 deg)" values="15|30|90|None (1Rx/1Tx)" labels="4Rx,2Tx(15 deg)|4Rx,1Tx(30 deg)|2Rx,1Tx(90 deg)|1Rx,1Tx(None)'" initial-index="0" font-size="inherit" font-style="normal" font-weight="normal" text-decoration="none" text-align="left" visible tooltip="Select the azimuth resolution and elevation (xWR14xx only) configuration for TI mmWave EVMs. Options are:15 deg (4Rx,2Tx), 30 deg (4Rx, 1Tx), 90 deg (2Rx, 1Tx), None (1Tx, 1Rx), 15 deg + Elevation (4 Rx, 3 Tx for xWR14xx only).Please reboot the board before sending new config with this parameter changed as compared to last config." id="ti_widget_droplist_azimuth_resolution" class="_TI_ x-scope ti-widget-droplist-0" onchange="onAzimuthResolution()"></ti-widget-droplist>
+                <ti-widget-label label="SDK version" text-align="left" font-size="inherit" font-style="normal" font-weight="normal" text-decoration="none" visible tooltip="Select the SDK version for which desired version is being selected. Before sending the config to a valid device connected to this instance of Visualizer,  a simple check of the SDK version running on the device will be made against this selected version and an appropriate error will be generated." id="ti_widget_label_sdk_version" class="_TI_" title></ti-widget-label>
+                <ti-widget-droplist selected-index="2" selected-value="258" selected-text="1.2" values="0x0100|0x0101|0x0102" labels="1.0|1.1|1.2" font-size="inherit" font-style="normal" font-weight="normal" text-decoration="none" text-align="left" visible tooltip="Select the SDK version for which desired version is being selected. Before sending the config to a valid device connected to this instance of Visualizer,  a simple check of the SDK version running on the device will be made against this selected version and an appropriate error will be generated." id="ti_widget_droplist_sdk_version" class="_TI_ x-scope ti-widget-droplist-0" onchange="onSDKVersionChange()"></ti-widget-droplist>
+            </ti-widget-container>
+        </ti-widget-tab>
+        <ti-widget-tab name="Plots" icon-style="width:25px;padding-right:5px;" font-size="inherit" font-style="normal" font-weight="normal" text-align="left" text-decoration="none" visible id="ti_widget_tab_plot" title class="_TI_">
+            <ti-widget-plot id="ti_widget_plot1" config='{"displaylogo":false, "modeBarButtonsToRemove":["sendDataToCloud"]}' layout='{"autosize":"false", "title":"X-Y Scatter Plot","xaxis":{"title":"Distance along lateral axis (meters)","range":[-2,2]},"yaxis":{"title":"Distance along longitudinal axis (meters)","range":[0,3]}}' data='[{"x":[2,-2],"y":[2,0.01],"mode":"markers","type":"scatter"}]' class="_TI_" title visible></ti-widget-plot>
+            <ti-widget-plot id="ti_widget_plot2" config='{"displaylogo":false, "modeBarButtonsToRemove":["sendDataToCloud"]}' layout='{"showlegend":"true","legend": {"x": "0.7","y": "1"},"autosize":"false", "title":"Range Profile","xaxis":{"title":"Range (meters)"},"yaxis":{"title":"Received Signal strength across antennas (dB)"}}' data='[{"x":[2,3,4,5],"y":[11,17,2,4],"mode":"lines","type":"scatter"},{"x":[1,2,3,4],"y":[3,4,5,6],"mode":"markers","type":"scatter"}]' class="_TI_" title visible></ti-widget-plot>
+            <ti-widget-plot id="ti_widget_plot3" config='{"displaylogo":false, "modeBarButtonsToRemove":["sendDataToCloud"]}' layout='{"autosize":"false", "title":"Doppler-Range Plot","xaxis":{"title":"Range (meters)","range":[0,3]},"yaxis":{"title":"Doppler (m/s)"}}' data='[{"x":[2,-2],"y":[2,0.01],"mode":"markers","type":"scatter"}]' class="_TI_" title visible></ti-widget-plot>
+            <ti-widget-plot id="ti_widget_plot4" class="_TI_" config='{"displaylogo":false, "modeBarButtonsToRemove":["sendDataToCloud"]}' layout='{"autosize":"false", "title":"Azimuth-Range Heatmap","xaxis":{"title":"Distance along lateral axis (meters)"},"yaxis":{"title":"Distance along longitudinal axis (meters)"}}' data='[{"z":[[1,1],[1,1],[1,1]],"type":"heatmap","colorscale":"Jet"}]' background-color="#FFFFFF"></ti-widget-plot>
+            <ti-widget-plot id="ti_widget_plot5" config='{"displaylogo":false, "modeBarButtonsToRemove":["sendDataToCloud"]}' layout='{"showlegend":"true","legend": {"x": "0.7","y": "1"},"autosize":"false", "title":"Statistics","xaxis":{"title":"Frames"},"yaxis":{"title":"% CPU Load"}}' data='[{"x":[1,2,3],"y":[11,17,12],"mode":"lines","type":"scatter"}]' class="_TI_" title visible></ti-widget-plot>
+            <ti-widget-container font-size="inherit" font-style="normal" font-weight="normal" text-align="left" text-decoration="none" visible id="ti_widget_container_cb" class="_TI_" title>
+                <ti-widget-image image-path="app/images/colorbar.png" lock-aspect-ratio hover-effect="no" visible id="ti_widget_image_cb" class="_TI_"></ti-widget-image>
+                <ti-widget-label label="Min" text-align="left" font-size="inherit" font-style="normal" font-weight="normal" text-decoration="none" visible id="ti_widget_label_cbmin" class="_TI_" title></ti-widget-label>
+                <ti-widget-label label="Max" text-align="left" font-size="inherit" font-style="normal" font-weight="normal" text-decoration="none" visible id="ti_widget_label_cbmax" class="_TI_" title></ti-widget-label>
+            </ti-widget-container>
+            <ti-widget-container font-size="inherit" auto-scroll font-style="normal" font-weight="normal" text-align="left" text-decoration="none" visible id="ti_widget_container_summary" class="_TI_" title>
+                <ti-widget-container font-size="inherit" auto-scroll font-style="normal" font-weight="normal" text-align="left" text-decoration="none" visible id="ti_widget_container_sensor_stop" title class="_TI_">
+                    <ti-widget-label label="Range Depth" text-align="left" font-size="inherit" font-style="normal" font-weight="normal" text-decoration="none" visible tooltip="This controls the Y axis of scatter plot and X axis of Doppler-Range plot. The value can be changed when the sensor is in stop state (Hint: use the STOP button) and changes will apply when the sensor is started again (using reconfiguration method or START button)" id="ti_widget_label_depth" class="_TI_" title></ti-widget-label>
+                    <ti-widget-textbox value="10" text-align="left" font-size="inherit" font-style="normal" font-weight="normal" text-decoration="none" visible tooltip="This controls the Y axis of scatter plot and X axis of Doppler-Range plot. The value can be changed when the sensor is in stop state (Hint: use the STOP button) and changes will apply when the sensor is started again (using reconfiguration method or START button)" id="ti_widget_textbox_depth" class="_TI_ x-scope ti-widget-textbox-0" placeholder="Enter a number"></ti-widget-textbox>
+                    <ti-widget-label label="Range Width" text-align="left" font-size="inherit" font-style="normal" font-weight="normal" text-decoration="none" visible tooltip="This controls the X axis of scatter plot and should be 1/2 of range depth for a well balanced plot. The value can be changed when the sensor is in stop state (Hint: use the STOP button) and changes will apply when the sensor is started again (using reconfiguration method or START button)" id="ti_widget_label_width" class="_TI_" title></ti-widget-label>
+                    <ti-widget-textbox value="5" text-align="left" font-size="inherit" font-style="normal" font-weight="normal" text-decoration="none" visible tooltip="This controls the X axis of scatter plot and should be 1/2 of range depth for a well balanced plot. The value can be changed when the sensor is in stop state (Hint: use the STOP button) and changes will apply when the sensor is started again (using reconfiguration method or START button)" id="ti_widget_textbox_width" class="_TI_ x-scope ti-widget-textbox-0" placeholder="Enter a number"></ti-widget-textbox>
+                    <ti-widget-label label="Range Profile Y max" text-align="left" font-size="inherit" font-style="normal" font-weight="normal" text-decoration="none" visible tooltip="This controls the Y axis of Range profile plot. The value can be changed when the sensor is in stop state (Hint: use the STOP button) and changes will apply when the sensor is started again (using reconfiguration method or START button)" id="ti_widget_label_rpymax" class="_TI_" title></ti-widget-label>
+                    <ti-widget-textbox value="2e6" text-align="left" font-size="inherit" font-style="normal" font-weight="normal" text-decoration="none" visible id="ti_widget_textbox_rpymax" class="_TI_ x-scope ti-widget-textbox-0"></ti-widget-textbox>
+                    <ti-widget-checkbox label="Range Profile Log Scale" checked text-align="left" font-size="inherit" font-style="normal" font-weight="normal" text-decoration="none" visible tooltip="This controls whether linear or log values are plotted in the Range Profile plot. The value can be changed when the sensor is in stop state (Hint: use the STOP button) and changes will apply when the sensor is started again (using reconfiguration method or START button)" id="ti_widget_checkbox_rplogscale" onchange="onRangeProfileLogScale()" class="_TI_"></ti-widget-checkbox>
+                    <ti-widget-button label="Sensor Stop" button-type="default" raised visible bindable-trigger="34" id="ti_widget_button_start_stop" animated elevation="1" onclick="onStartStop()" class="_TI_ x-scope ti-widget-button-0" title></ti-widget-button>
+                </ti-widget-container>
+                <ti-widget-container font-size="inherit" auto-scroll font-style="normal" font-weight="normal" text-align="left" text-decoration="none" visible id="ti_widget_container_summarytab" title class="_TI_">
+                    <ti-widget-label label="label" text-align="left" font-size="inherit" font-style="normal" font-weight="normal" text-decoration="none" visible id="ti_widget_label1" class="_TI_" title></ti-widget-label>
+                    <ti-widget-label label="value" text-align="left" font-size="inherit" font-style="normal" font-weight="normal" text-decoration="none" visible id="ti_widget_value1" class="_TI_" title></ti-widget-label>
+                    <ti-widget-label label="label" text-align="left" font-size="inherit" font-style="normal" font-weight="normal" text-decoration="none" visible id="ti_widget_label2" class="_TI_" title></ti-widget-label>
+                    <ti-widget-label label="value" text-align="left" font-size="inherit" font-style="normal" font-weight="normal" text-decoration="none" visible id="ti_widget_value2" class="_TI_" title></ti-widget-label>
+                    <ti-widget-label label="label" text-align="left" font-size="inherit" font-style="normal" font-weight="normal" text-decoration="none" visible id="ti_widget_label3" class="_TI_" title></ti-widget-label>
+                    <ti-widget-label label="value" text-align="left" font-size="inherit" font-style="normal" font-weight="normal" text-decoration="none" visible id="ti_widget_value3" class="_TI_" title></ti-widget-label>
+                    <ti-widget-label label="label" text-align="left" font-size="inherit" font-style="normal" font-weight="normal" text-decoration="none" visible id="ti_widget_label4" class="_TI_" title></ti-widget-label>
+                    <ti-widget-label label="value" text-align="left" font-size="inherit" font-style="normal" font-weight="normal" text-decoration="none" visible id="ti_widget_value4" class="_TI_" title></ti-widget-label>
+                    <ti-widget-label label="label" text-align="left" font-size="inherit" font-style="normal" font-weight="normal" text-decoration="none" visible id="ti_widget_label5" class="_TI_" title></ti-widget-label>
+                    <ti-widget-label label="value" text-align="left" font-size="inherit" font-style="normal" font-weight="normal" text-decoration="none" visible id="ti_widget_value5" class="_TI_" title></ti-widget-label>
+                    <ti-widget-label label="label" text-align="left" font-size="inherit" font-style="normal" font-weight="normal" text-decoration="none" visible id="ti_widget_label6" class="_TI_" title></ti-widget-label>
+                    <ti-widget-label label="value" text-align="left" font-size="inherit" font-style="normal" font-weight="normal" text-decoration="none" visible id="ti_widget_value6" class="_TI_" title></ti-widget-label>
+                    <ti-widget-label label="label" text-align="left" font-size="inherit" font-style="normal" font-weight="normal" text-decoration="none" visible id="ti_widget_label7" class="_TI_" title></ti-widget-label>
+                    <ti-widget-label label="value" text-align="left" font-size="inherit" font-style="normal" font-weight="normal" text-decoration="none" visible id="ti_widget_value7" class="_TI_" title></ti-widget-label>
+                    <ti-widget-label label="label" text-align="left" font-size="inherit" font-style="normal" font-weight="normal" text-decoration="none" visible id="ti_widget_label8" class="_TI_" title></ti-widget-label>
+                    <ti-widget-label label="value" text-align="left" font-size="inherit" font-style="normal" font-weight="normal" text-decoration="none" visible id="ti_widget_value8" class="_TI_" title></ti-widget-label>
+                    <ti-widget-label label="label" text-align="left" font-size="inherit" font-style="normal" font-weight="normal" text-decoration="none" visible id="ti_widget_label9" class="_TI_" title></ti-widget-label>
+                    <ti-widget-label label="value" text-align="left" font-size="inherit" font-style="normal" font-weight="normal" text-decoration="none" visible id="ti_widget_value9" class="_TI_" title></ti-widget-label>
+                    <ti-widget-droplist selected-index="1" selected-value="Scene" selected-text="Scene" values="Chirp/Frame|Scene|Profiling" labels="Chirp/Frame|Scene|Profiling" font-size="inherit" font-style="normal" font-weight="normal" text-decoration="none" text-align="left" visible id="ti_widget_droplist_summarytab" onchange="onSummaryTab()" class="_TI_ x-scope ti-widget-droplist-0"></ti-widget-droplist>
+                    <ti-widget-label label="Display Parameters" text-align="left" font-size="inherit" font-style="normal" font-weight="normal" text-decoration="none" visible id="ti_widget_label_summarytab" class="_TI_" title></ti-widget-label>
+                </ti-widget-container>
+                <ti-widget-container font-size="inherit" auto-scroll font-style="normal" font-weight="normal" text-align="left" text-decoration="none" visible id="ti_widget_container_record" title class="_TI_">
+                    <ti-widget-button label="Record Start" button-type="default" raised visible bindable-trigger="47" id="ti_widget_button_record" animated elevation="1" onclick="onRecordPause()" class="_TI_ x-scope ti-widget-button-0" title></ti-widget-button>
+                    <ti-widget-label label="File Size Max (MB)" text-align="left" font-size="inherit" font-style="normal" font-weight="normal" text-decoration="none" visible tooltip="Recording of output stream from mmWave EVM will automatically stop after this many Megabytes are written to file. " id="ti_widget_label_record_file_size_limit" class="_TI_" title></ti-widget-label>
+                    <ti-widget-textbox value="1" text-align="left" font-size="inherit" font-style="normal" font-weight="normal" text-decoration="none" visible tooltip="Recording of output stream from mmWave EVM will automatically stop after this many Megabytes are written to file. " id="ti_widget_textbox_record_file_size_limit" class="_TI_ x-scope ti-widget-textbox-0" placeholder="Enter a number"></ti-widget-textbox>
+                    <ti-widget-label label="Record time max (s)" text-align="left" font-size="inherit" font-style="normal" font-weight="normal" text-decoration="none" visible tooltip="Recording of output stream from mmWave EVM will automatically stop after data for this many seconds are captured to the file.. " id="ti_widget_label_record_time" class="_TI_" title></ti-widget-label>
+                    <ti-widget-textbox value="10" text-align="left" font-size="inherit" font-style="normal" font-weight="normal" text-decoration="none" visible tooltip="Recording of output stream from mmWave EVM will automatically stop after data for this many seconds are captured to the file." id="ti_widget_textbox_record_time" class="_TI_ x-scope ti-widget-textbox-0" placeholder="Enter a number"></ti-widget-textbox>
+                </ti-widget-container>
+                <ti-widget-button label="Load Config from PC and Send" button-type="default" raised visible bindable-trigger="23" id="ti_widget_button_load_cfg" class="_TI_ x-scope ti-widget-button-0" onclick="onLoadCfg()" elevation="1" animated title></ti-widget-button>
+            </ti-widget-container>
+        </ti-widget-tab>
+    </ti-widget-tabcontainer>
+</ti-widget-container>
+
+<ti-widget-statusbar app-icon-style="color: white;display:inline-block;" icon-name="ti-core-icons:nolink" id="ti_widget_statusbar" class="_TI_"></ti-widget-statusbar>
+
+<ti-serialio-model default-baud-rate="115200" rx-packet-data-format="cr" tx-packet-data-format="cr" hidden target-folder="target" class="_TI_" id="CFG_port"></ti-serialio-model>
+
+<ti-serialio-model default-baud-rate="921600" rx-packet-data-format="raw" tx-packet-data-format="json" hidden class="_TI_" id="DATA_port"></ti-serialio-model>
+<input type="file" class="_TI_" id="myFileLoadDialog">
+<ti-widget-streamsaver id="ti_widget_streamsaver" class="_TI_"></ti-widget-streamsaver>
+
+<paper-dialog class="_TI_ x-scope paper-dialog-0" id="dialog_help_about" modal>
+    <h2 id="label_help_about" class="_TI_">Help About</h2>
+    <textarea readonly rows="10" id="textbox_help_about" class="_TI_"></textarea>
+    <div class="buttons _TI_">
+        <paper-button class="_TI_ x-scope paper-button-0" dialog-confirm autofocus animated elevation="0">Close</paper-button>
+    </div>
+</paper-dialog>
+
+</template>
+ 
+<!-- ------------------------------------------------------------------------------------- -->
+
+<script>
+	// Do not edit this file - it is automatically generated.  Please edit index.js
+	addEventListener('WebComponentsReady', function () {
+		// remove splash
+        var splash = document.querySelector("#splash")
+        if (splash) {
+			splash.parentNode.removeChild(splash);
+        }
+	});
+</script>
+</body>
+</html>

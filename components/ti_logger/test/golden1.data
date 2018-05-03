@@ -1,0 +1,18 @@
+error: my error messsage source=unknown
+warn: my warning messsage source=unknown
+info: my info messsage source=unknown
+trace: my trace messsage source=unknown
+tracefiner: my tracefiner messsage source=unknown
+tracefinest: my tracefinest messsage source=unknown
+error: my error messsage source=source1
+warn: my warning messsage source=source1
+info: my info messsage source=source1
+trace: my trace messsage source=source1
+tracefiner: my tracefiner messsage source=source1
+tracefinest: my tracefinest messsage source=source1
+{"source":"unknown","level":"error","message":"my error messsage"}
+{"source":"unknown","level":"warn","message":"my warning messsage"}
+{"source":"unknown","level":"info","message":"my info messsage"}
+{"source":"source1","level":"error","message":"my error messsage"}
+{"source":"source1","level":"warn","message":"my warning messsage"}
+{"source":"source1","level":"info","message":"my info messsage"}

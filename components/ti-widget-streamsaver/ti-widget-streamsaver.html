@@ -1,0 +1,37 @@
+<link rel="import" href="../polymer/polymer.html">
+<script type="text/javascript" src="StreamSaver.js"></script>
+<!--
+`ti-widget-streamsaver` Save data streams on client side. Require Chrome version 60+.
+
+Example:
+
+    <ti-widget-streamsaver></ti-widget-streamsaver>
+
+@element ti-widget-streamsaver
+-->
+<dom-module id="ti-widget-streamsaver">
+  <template>
+  </template>
+
+  <script>
+    Polymer({
+      is: 'ti-widget-streamsaver',
+
+      properties: {
+      },
+
+      observers: [
+      ],
+
+
+      // Life Cycle
+
+      attached: function () {
+          var self = this;
+          streamSaver.myurl = this.resolveUrl('./');
+          streamSaver.mitm = this.resolveUrl('./mitm.html') + '?version=' + streamSaver.version.full;
+      },
+
+    });
+  </script>
+</dom-module>

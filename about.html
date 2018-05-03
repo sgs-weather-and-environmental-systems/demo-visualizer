@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta content="text/html;charset=utf-8" http-equiv="Content-Type">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+
+    <title>About...</title>
+    <style>
+        :host {
+            position : fixed;
+            display: block;
+            top : 0 !important;
+            left : 0 !important;
+            opacity : 1;
+            z-index : 999;
+            pointer-events : none;
+            overflow:hidden;
+            width: 700px;
+            height: 440px;
+            white-space: nowrap;
+            color: black;
+        }
+
+        body {
+            overflow: hidden;
+        }
+    </style>
+    <!--     Enable the following if you do not wish to use the ti-core-stylesheets style:
+    <style>
+        body {
+            font-family: "HelveticaNeue-Light", "Helvetica Neue Light", "Helvetica Neue", Helvetica, Arial, "Lucida Grande", sans-serif;
+            font-weight: 300;
+            background-color: #AAAAAA; */
+        }
+        html .ti-banner {
+            background-color: #CC0000;
+        }
+
+    </style>
+    -->
+    <link rel="import" href="../designer/components/ti-core-stylesheets/ti-core-stylesheets.html">
+
+    <script src='./components/ti-core-assets/scripts/q.js'></script>
+    <script src='./gcDesigner.js'></script>
+</head>
+<body  id="myapp">
+<table style="-webkit-user-select: none; position: absolute; border: none; margin: 0px; padding: 0; z-index: 800; width: 100%; height: 100%; left: 0; ">
+    <tbody>
+    <tr style="height: 35%;">
+        <td colspan="2" style="width: 100%; vertical-align: middle; padding-left: 1em; text-align: left; font-size: 1.0em;">
+            <table style="width: 100%; text-align: left;" >
+                <tr><td><label id="about_app_name" style="font-weight: bold; font-size:x-large; width: 100%; text-align: left;"></label>
+                <tr><td><label id="about_title" style=" font-weight: bold; font-size:large; padding-bottom: 1em;"></label></td></tr>
+                <tr><td>Version <label id="about_version" style="padding-bottom: 1em;"></label></td></tr>
+                <tr><td>&nbsp;</td></tr>
+                <tr><td><label id="about_copyright" style="white-space: normal;"></label></td></tr>
+                <tr><td>Visit <label id="about_url" onclick="linkClickHdlr(this)" style="color:blue;text-decoration:underline;">http://www.ti.com</label></td></tr>
+                <tr><td><a href="docs/GUI Composer v2_v2_manifest.html"> GUI Composer Manifest</a></td></tr>
+            </table>
+        </td></tr>
+    <tr id="installed_software" style="height: 25%;">
+        <td colspan="2" style="vertical-align: middle; padding-left: 1em; text-align: left; font-size: small;">
+            <b>Installed Software:</b><br/>
+            <table border="1"  style="text-align: left;background-color:lightgray;border:solid grey 1px;border-collapse: collapse" >
+                <tr align="center"> <th width="130px">Name</th><th>Version</th><th>More Info...</th></tr>
+                <tr><td style="padding-left:10px;">nw.js</td>
+                    <td style="padding-left:10px;padding-right:10px;"><label id="about_nw_version"></label></td>
+                    <td>
+                        <label id="nw_link" onclick="linkClickHdlr(this)" style="color:blue;text-decoration:underline;">https://github.com/nwjs/nw.js/blob/master/CHANGELOG.md</label>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="padding-left:10px;">io.js</td>
+                    <td style="padding-left:10px;padding-right:10px;"><label id="about_node_version"></label></td>
+                    <td>
+                        <label id="about_node_api" onclick="linkClickHdlr(this)"  style="color:blue;text-decoration:underline;"></label>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="padding-left:10px;">chromium</td>
+                    <td style="padding-left:10px;padding-right:10px;"><label id="about_chromium_version"></label></td>
+                    <td> <label id="chromeLink" onclick="linkClickHdlr(this)" style="color:blue;text-decoration:underline;">https://www.chromestatus.com/features</label></td>
+                </tr>
+                <tr>
+                    <td style="padding-left:10px;">polymer</td>
+                    <td style="padding-left:10px;padding-right:10px;"><label id="about_polymer_version"></label></td>
+                    <td><label id="about_polymer_api" onclick="linkClickHdlr(this)" style="color:blue;text-decoration:underline;"></label></td>
+                </tr>
+                <tr>
+                    <td style="padding-left:10px;">GUI Composer Runtime</td>
+                    <td style="padding-left:10px;padding-right:10px;"><label id="about_gcr_version"></label></td>
+                    <td></td>
+                </tr>
+            </table>
+
+        </td>
+    </tr>
+    <tr id="footer_information_id"><td><div style="vertical-align: middle; padding-left: 1em; text-align: left; font-size: small;">For a complete list, please see <label id="manifest_link" onclick="fileClickHdlr(this)" style="color:blue;text-decoration:underline;">docs/Software Manifest.pdf</label></div></td></tr>
+    <tr style="height:100px"><td style="width: 100%; text-align: right; vertical-align: top; padding-right: 5%">
+        <table class="ti-banner" style="width: 100%; height: 75px;">
+            <tbody><tr ><td >
+            </td><td style="text-align: right;">
+                <object class="banner" type="image/svg+xml" data="images//ti_horiz_banner.svg" style="padding-right:25px;padding-bottom:15px"></object>
+            </td></tr>
+            </tbody>
+        </table>
+    </td></tr>
+    <tr><td>&nbsp;</td></tr>
+    </tbody>
+</table>
+
+
+<script>
+    var isNodeWebkit =  (typeof process !== 'undefined');
+
+    var gui = undefined;
+    if (isNodeWebkit) {
+        gui = require('nw.gui');
+    }
+    var title_label = document.getElementById('about_title');
+    var app_name_label = document.getElementById('about_app_name');
+    var copyright_label = document.getElementById('about_copyright');
+    var version_label = document.getElementById('about_version');
+    var url_label = document.getElementById('about_url');
+    var nw_version_label = document.getElementById('about_nw_version');
+    var node_version_label = document.getElementById('about_node_version');
+    var node_api_label = document.getElementById('about_node_api');
+    var chromium_version_label = document.getElementById('about_chromium_version');
+    var polymer_version_label = document.getElementById('about_polymer_version');
+    var polymer_api_label = document.getElementById('about_polymer_api');
+    var gcr_version_label = document.getElementById('about_gcr_version');
+    var gcr_version_number_label = document.getElementById('about_gcr_version_number');
+    var installed_software_row = document.getElementById('installed_software');
+    var footer_information_row = document.getElementById('footer_information_id');
+    //Note: the gui.App.manifest reflects the settings used to open THIS window, not
+    // the main application.
+    if (isNodeWebkit) {
+
+        app_name_label.innerHTML = gui.App.manifest.splash_application_name;
+        copyright_label.innerHTML = "&copy;&nbsp;" + gui.App.manifest.splash_copyright_notice;
+        version_label.innerHTML = gui.App.manifest.splash_version;
+        title_label.innerHTML = gui.App.manifest.splash_title;
+        //url_label.innerHTML = 'Visit <a href="'+gui.App.manifest.help+'">'+gui.App.manifest.help+'</a>';
+        document.title = "About " + gui.App.manifest.splash_application_name;
+        nw_version_label.innerHTML = 'v' + process.versions['node-webkit'];
+        node_version_label.innerHTML = process.version;
+
+        var apiVersion = process.version;
+        var indexOfDash = apiVersion.indexOf('-');
+        if (indexOfDash > 0) {
+            apiVersion = apiVersion.substring(0, indexOfDash);
+        }
+        node_api_label.innerText = 'https://iojs.org/api/index.html'; //'http://nodejs.org/docs/'+apiVersion+'/api/';
+        chromium_version_label.innerText = 'v' + process.versions['chromium'];
+    }
+    else {
+		title_label.innerHTML = "GUI Composer Designer v2";
+		app_name_label.innerHTML = "GUI Composer Designer v2";
+		copyright_label.innerHTML = "Copyright @ Texas Instruments Inc 2015-2016";
+		version_label.innerHTML = "v2  build 16.07";
+		url_label.innerHTML = "http://dev.ti.com";
+		
+		while (installed_software_row.hasChildNodes()) {
+			installed_software_row.removeChild(installed_software_row.firstChild);
+		}
+		
+		installed_software_row.innerHTML =  "Browser version :" + navigator.userAgent;
+		
+		while (footer_information_row.hasChildNodes()) {
+			footer_information_row.removeChild(footer_information_row.firstChild);
+		}
+    }
+    try {
+        var path = require('path');
+        
+        var promises = [gc.designer.readFile(gc.designer.components.folderName + '/polymer/bower.json')];
+        if (isNodeWebkit) {
+            promises.push(gc.designer.readFile(gc.designer.cloudAgent.folderName + '/version.xml'));
+        }
+        
+        Q.all(promises).then(function(results) {
+            /* Polymer version */
+            if (results.length > 0) {
+                var polymerInfo = JSON.parse(results[0]);
+                var polymerVersion = polymerInfo.version;
+                polymer_version_label.innerText = 'v' + polymerVersion;
+                // shorten from X.Y.Z to X.Y for use in URLs
+                var dotIndex = polymerVersion.lastIndexOf('.');
+                if (dotIndex >= 0) {
+                    polymerVersion = polymerVersion.substring(0, dotIndex);
+                }
+                var urlStr = 'https://www.polymer-project.org/' + polymerVersion + '/docs/polymer/polymer.html';
+                polymer_api_label.innerText = urlStr;
+            }
+            
+            /* GUI Composer runtime version */
+            if (results.length > 1) {
+                var versionXml = results[1];
+                if ((versionXml !== undefined) && (versionXml !== null) && (versionXml.length > 0)){
+                    var gcRuntimeVersion = versionXml.substring(versionXml.indexOf("<version>")+9,versionXml.indexOf("</version>"));
+                    gcr_version_label.innerText = 'v'+gcRuntimeVersion;
+                }   
+            }
+        });
+    }
+    catch(ex){
+        console.log("exception when reading webcomponentsjs/bower.json: ex="+ex.toString());
+    }
+
+
+    var linkClickHdlr = function(label){
+        var link = label.innerText;
+        if (isNodeWebkit) {
+            gui.Shell.openExternal(link);
+        }
+    }
+
+    var fileClickHdlr = function(label){
+        var link = label.innerText;
+        if (isNodeWebkit) {
+            var path = require('path');
+            var fileUrl = 'file:///'+path.join(process.cwd(),'..',link);
+            gui.Shell.openExternal(fileUrl);
+        }
+    }
+</script>
+</body>
+</html>

@@ -1,0 +1,44 @@
+<link rel="import" href="../polymer/polymer.html">
+
+<link rel="import" href="../ti-core-databind/ti-core-databind.html">
+<script src='src/IRegisterModelAdapter.js'></script>
+<script src='src/I2CRegisterModel.js'></script>
+
+<!--
+`ti-core-i2c-model`  adds the I2C model for databinding to a target device using I2C pins.
+@group Ti Elements
+@element ti-core-i2c-model
+@homepage elements/ti-guicomposer-helpindex/demo.html
+-->
+
+<dom-module id='ti-core-i2c-model'  >
+<template>
+    <style>
+        :host {
+            display: none;
+    }
+    </style>
+</template>
+<script>
+    Polymer ({
+      is: 'ti-core-i2c-model',  
+
+    
+     
+        generateProjectMetadata : function(exportDirectory, arrayOfLines)
+        {
+            var bindings = gc.databind.registry.parseBindingsFromGist(this.id, arrayOfLines, 'i2c');
+            gc.databind.registry.saveBindingsToFile('index.json', bindings);
+        },
+        attached: function()
+        {
+            this.async(function()
+            {
+                this.fire('modelReadyEvent',this);
+            }.bind(this),1);
+        }
+    });
+
+</script>
+    
+</dom-module>

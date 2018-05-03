@@ -1,0 +1,496 @@
+
+<!--
+    Copyright (c) 2017, Texas Instruments Incorporated
+    All rights reserved.
+
+    Redistribution and use in source and binary forms, with or without
+    modification, are permitted provided that the following conditions
+    are met:
+
+    *   Redistributions of source code must retain the above copyright
+    notice, this list of conditions and the following disclaimer.
+    notice, this list of conditions and the following disclaimer in the
+    documentation and/or other materials provided with the distribution.
+    *   Neither the name of Texas Instruments Incorporated nor the names of
+    its contributors may be used to endorse or promote products derived
+    from this software without specific prior written permission.
+
+    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+    AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+    THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+    PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+    CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+    EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+    PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+    OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+    WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+    OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+    EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+-->
+
+<link rel="import" href="../polymer/polymer.html">
+
+<link rel="import" href="../ti-core-databind/ti-core-databind.html">
+<link rel="import" href="../ti-core-databind/ti-core-model-base-behavior.html">
+<link rel="import" href="../ti-service-usbhid/ti-service-usbhid.html">
+<script src='src/internal/reg/RegisterBind.js'></script>
+<script src='src/internal/reg/USB2ANY.js'></script>
+<script src='src/internal/reg/RegisterModel.js'></script>
+<!--
+`ti-register-model` adds the register model for databinding to a device registers accessible through some data bus like I2C or SPI.
+    -
+Example:
+
+    <ti-register-model></ti-register-model>
+
+See ../demo/ti-register-model/demo.html for a full working example of how to use this component.
+
+@group Ti Elements
+@element ti-register-model
+@homepage elements/ti-guicomposer-helpindex/demo.html
+@demo demo.html
+-->
+<dom-module id='ti-register-model'>
+    <template>
+        <style>
+            :host {
+                display: none;
+            }
+        </style>
+        <ti-service-usbhid id="usbHidService" usb-hid-model-output-hdlr="{{usbHidPortDataHdlr}}" backplane="{{backplane}}" model-id="[[id]]" ></ti-service-usbhid>
+        <ti-service-programloader id="programLoader" device-name="[[deviceName]]" connection-id="[[connectionId]]" model-id="[[id]]"
+                                  target-program="[[targetProgram]]" target-program-verify-image="[[targetProgramVerifyImage]]" target-folder="[[targetFolder]]"
+                                  is-program-download-btn-visible="{{canFlashDevice}}" backplane="{{backplane}}"></ti-service-programloader>
+    </template>
+    <script>
+        (function() {
+
+            var _readyPromise = Q.defer();
+            var _registerDefsResolve, _registerDefsReject;
+
+            var sendPacket = function(packet)
+            {
+                return this.$ && this.$.usbHidService && this.$.usbHidService.usbHidSend && this.$.usbHidService.usbHidSend(packet);
+            };
+
+            Polymer ({
+                is: 'ti-register-model',
+
+                behaviors: [TICoreModelBaseBehavior],
+
+                properties: {
+                    selectedDevice: {
+                        notify: true,
+                        type: Object,
+                        value: undefined
+                    },
+
+                    /** the name of the target device.  This is only needed to auto program the target device with an image.
+                     *
+                     * @attribute deviceName
+                     * @type String
+                     */
+                    deviceName: {
+                        type: String,
+                        value: undefined
+                    },
+
+                    /** the name of the connection.  This is only needed to auto program the target device with an image.
+                     *
+                     * @attribute connectionId
+                     * @type String
+                     */
+                    connectionId: {
+                        type: String,
+                        value: undefined
+                    },
+
+                    /**
+                     * The relative path to the program to auto load onto the target device before serial communications can begin.
+                     * @attribute targetProgram
+                     * @type string
+                     */
+                    targetProgram: {
+                        type: String,
+                        value: undefined
+                    },
+                    /**
+                     * The name of the program image to use to verify the program loaded into the target device.
+                     * If specified, this will be used to determine whether or not the targetProgram is to be programmed
+                     * into the device or not.  Stored in the same targetFolder as the targetProgram (See 'targetFolder')
+                     * @attribute targetProgramVerifyImage
+                     * @type string
+                     */
+                    targetProgramVerifyImage: {
+                        type: String,
+                        value: undefined
+                    },
+                    /**
+                     * The relative or absolute path to the folder where the target program is located.
+                     * this attribute is optional, and if omitted, the default folder is 'target/'.
+                     * @attribute targetProgram
+                     * @type string
+                     */
+                    targetFolder: {
+                        type: String,
+                        value: undefined
+                    },
+
+                    /**
+                     * Flag to indicate if the program should always be loaded automatically.
+                     * @type string
+                     */
+                    autoLoadProgram: {
+                        notify: true,
+                        type: Boolean,
+                        value: false
+                    },
+
+                    /** Name of the protocol to use for reading/writing register model values to/from the target.
+                     * @type string
+                     */
+                    protocol: {
+                        type: String,
+                        value: "usb2any"
+                    },
+
+                    /** Name of the transport to use for communicating with the target.
+                     * @type string
+                     */
+                    transport: {
+                        type: String,
+                        value: "hidusb"
+                    },
+
+                    /** the serial port baud rate to use by default for serial communications with the target when transport='uart'.
+                     *
+                     * @attribute defaultBaudRAte
+                     * @type Number
+                     * @default 9600
+                     */
+                    defaultBaudRate: {
+                        notify: true,
+                        type: Number,
+                        value: 9600
+                    },
+
+                    canFlashDevice: {
+                        type: Boolean,
+                        value: undefined,
+                        notify: true
+                    },
+
+                    registerDefs: {
+                        type: String,
+                        value: undefined,
+                        notify: false,
+                        observer: "_registerDefsChanged" 
+                    }
+                },
+                _registerDefsChanged: function() 
+                {
+                    var that = this;
+                    _readyPromise.promise.then(function () 
+                    {
+                        if (_registerDefsResolve && _registerDefsReject)
+                        {
+	                        if (that.registerDefs)
+	                        {
+		                        gc.fileCache.readJsonFile(that.registerDefs).then(_registerDefsResolve).fail(_registerDefsReject);
+	                    	}
+	                        else
+	                        {
+	                            _registerDefsReject('ti-register-model: is missing the "register-defs" attribute.');
+	                        }
+	                        _registerDefsResolve = null;
+	                        _registerDefsReject = null;
+                        }
+                    });
+                },
+                programLoaded: false,
+                domReady: function()
+                {
+                    var that = this;
+                    this._registerDefPromise = Q.promise(function(resolve, reject)
+                    {
+                        _registerDefsResolve = resolve;
+                        _registerDefsReject = reject;
+                    }).then(function(fileContents)
+                    {
+                        if (fileContents)
+                        {
+                            that._registerModel.addSymbols(fileContents);
+                            return fileContents;
+                        }
+                        else
+                        {
+                            throw 'ti-register-model: cannot open the register-defs file: ' + that.registerDefs;
+                        }
+                    }).fail(function(reason)
+                    {
+                        console.error('ti-register-model: cannot read/parse the register-defs file.  ' + reason);
+                    });
+                    
+                    gc.databind.modelsReady.wait();
+                    this._registerDefPromise.fin(function() { gc.databind.modelsReady.done() });
+
+                    _readyPromise.resolve();
+
+                    this.usbHidPortDataHdlr =
+                        {
+                            data: function(buffer)
+                            {
+                                var isConnected = that._codec.decode(null, buffer);
+                                that.setConnectedState(isConnected);
+                                if (that._callbackForDataValidation && isConnected)
+                                {
+                                    that._callbackForDataValidation();
+                                    that._callbackForDataValidation = undefined;
+                                }
+                            }
+                        };
+                    this._codec = new gc.databind.internal.PacketCodecFactory.create(this.protocol, sendPacket.bind(that));
+
+                    this._registerModel = new gc.databind.internal.reg.RegisterModel(this._codec, this.id);
+
+                    // register the register model with bindingRegistry
+                    gc.databind.registry.registerModel(this._registerModel, false, 'reg');
+
+                    that.loadSettingsFromProjectDatabase().then(function(modelData)
+                    {
+                        that._ccxmlText = (modelData && modelData.ccxmlText) || {};
+                    });
+
+                    if (gc.designer && !(window.global && global.document && global.document.gc && global.document.gc.designer))
+                    {
+                        this.loadRecommendedComPort(this.getRecommendedComPortKeyPrefix());
+                    }
+                    else
+                    {
+                        gc.connectionManager.autoConnect();
+                    }
+
+                    that.$.usbHidService.addEventListener('usbHidPortsReadyToBeOpened', function()
+                    {
+                        that.onUsbHidPortListChanged();
+
+                        // if someone reconnects the backplane while in connected state, then open the serial port automatically.
+                        if (!that._waitForTargetReady)
+                        {
+                            that.$.usbHidService.updateStateMachine('userOpenUsbHidPort');
+                        }
+                    });
+
+                    that.$.usbHidService.addEventListener('usbHidPortOpen', function()
+                    {
+                        if (that.usbHidPortDataHdlr !== that.$.usbHidService.usbHidModelOutputHdlr) {
+                            console.error("Something changed the usbHidPortDataHdlr!  Reassigning...");
+                            that.$.usbHidService.usbHidModelOutputHdlr = that.usbHidPortDataHdlr;
+                        }
+                        console.log("ti-usbhid-model: usbHidPortOpen, usbHidPortDataHdlr assigned...");
+
+                        that._registerDefPromise.then(function(settings)
+                        {
+                            that.addConsoleProgress('waiting for data ...', 'Please ensure your hardware is actually transmitting data on the same serial port.');
+                            that._codec.connect(settings).then(function()
+                            {
+                                that.setConnectedState(true);
+
+                                that.fire('usbHidModelReceivingData');
+                                that.onConnected();
+                            }).fail(function(reason)
+                            {
+                                // TODO: display error message
+                                that.setConnectedState(false);
+                                that.onDisconnected();
+                            });
+                        });
+                    });
+
+                    that.$.usbHidService.addEventListener('currentStateUpdated', function()
+                    {
+                        if (that.$.usbHidService.currentState.name.indexOf('running') !== 0 &&
+                            that.$.usbHidService.currentState.name.indexOf('findingUsbHidPorts') !== 0 &&
+                            that.$.usbHidService.currentState.name.indexOf('openUsbHidPort') !== 0)
+                        {
+                            that._codec.disconnect();
+                            that.setConnectedState(false);
+                            if (that.status === 'disconnecting' &&
+                                (that.$.usbHidService.currentState.name.indexOf('usbHidPortReady') == 0 ||
+                                    that.$.usbHidService.currentState.name.indexOf('disconnected') === 0))
+                            {
+                                that.onDisconnected();
+                            }
+                        }
+                    });
+
+                    that.$.usbHidService.addEventListener('usbhidportchangedbyuser', function(event)
+                    {
+                        that.setConnectedState(false);
+                        // persist the user-selected comPort and baudRate for use next time.
+                        that.setRecommendedComPort(event.detail.comName, event.detail.baudRate);
+                    });
+                },
+                onUsbHidPortListChanged: function()
+                {
+                    if (!this.$) return;
+
+                    var usbHidService = this.$.usbHidService;
+                    var result = this.pickRecommendedComPort(usbHidService.usbHidPorts);
+                    usbHidService.selectedUsbHidPort = result.selectedUsbHidPort || usbHidService.selectedUsbHidPort;
+                },
+                generateProjectMetadata : function(exportDirectory, arrayOfLines)
+                {
+                    var bindings = gc.databind.registry.parseBindingsFromGist(this.id, arrayOfLines, this.id || 'reg');
+                    gc.databind.registry.saveBindingsToFile('index.json', bindings);
+                },
+                ready: function()
+                {
+                    this.async(this.domReady, 1);
+                },
+                attached: function()
+                {
+                    this.$.usbHidService.registerUsbHidPortInstance(this.id);
+                    var tcBinding = gc.databind.registry.getBinding((this.id || 'reg') + '.$target_connected');
+                    if (tcBinding) {
+                        tcBinding.addChangedListener(this);
+                    }
+
+                    this.async(function() {
+                        if (!tcBinding) {
+                            tcBinding = gc.databind.registry.getBinding((this.id || 'reg') + '.$target_connected');
+                            if (tcBinding) {
+                                tcBinding.addChangedListener(this);
+                            }
+                        }
+                        this.fire('modelReadyEvent', this);
+
+                    }.bind(this),1);
+                },
+                detached: function()
+                {
+                    var tcBinding = gc.databind.registry.getBinding((this.id || 'reg') + '.$target_connected');
+                    if (tcBinding) {
+                        tcBinding.removeChangedListener(this);
+                    }
+
+                    if (gc.designer && !(window.global && global.document && global.document.gc && global.document.gc.designer))
+                    {
+                        gc.databind.registry.getBinding(this.id + '.$rawData').removeChangedListener(this.onTargetDataReceived)
+                    }
+
+                    this.$.usbHidService.unregisterUsbHidPortInstance[this.id];
+                },
+
+                startConnecting: function(selectedDevice, preventClientAgentInstallCallback)
+                {
+                    this.startBackplane(selectedDevice || this.$.usbHidService.selectedDevice, preventClientAgentInstallCallback);
+                    if (this.autoLoadProgram)
+                    {
+                        this.flashDevice();
+
+                        sequencer.after('downloadProgram').schedule(
+                            'reconnect', gc.connectionManager.reconnectBackplane.bind(gc.connectionManager));
+                    }
+                    gc.connectionManager.sequencer.when('targetReady').then(function()
+                    {
+                        if (this.shouldAutoConnect())
+                        {
+                            this._waitForTargetReady = false;
+                            this.waitForEvent(this.$.usbHidService, 'usbHidPortUIVisibilityChanged', 'isUsbHidPortUIVisible', true).then(
+                                this.$.usbHidService.updateStateMachine.bind(this.$.usbHidService, 'userOpenUsbHidPort'));
+                        }
+                    }.bind(this));
+                },
+                startDisconnecting: function()
+                {
+                    this._waitForTargetReady = true;
+                    this.$.usbHidService.updateStateMachine('userCloseUsbHidPort');
+
+                    this.stopBackplane();
+
+                    this.onDisconnected();
+                },
+                /**
+                 * sets the selected USB-HID port
+                 *
+                 * @attribute port the usbHidPort to select
+                 */
+                changeUsbHidPort: function(port)
+                {
+                    this.$ && this.$.usbHidService.changeUsbHidPort(port.comName);
+                },
+                onValueChanged: function(wasConnected, isConnected)
+                {
+                    if (isConnected)
+                    {
+                        this.onConnected();
+                    }
+                    else
+                    {
+                        this.onDisconnected();
+                    }
+                },
+                saveSettingsToProjectDatabase: function(modelObjData, projectName)
+                {
+                    modelObjData.ccxmlText = {};
+
+                    this.saveRecommendedComPort(this.getRecommendedComPortKeyPrefix(projectName));
+
+                    if (this.deviceName && this.connectionId && this.targetProgram)
+                    {
+                        return this.backplane.generateCcxmlFile(this.deviceName, this.connectionId).then(function(jtagCcxml)
+                        {
+                            modelObjData.ccxmlText.jtag = jtagCcxml;
+                        });
+                    }
+                },
+                getRecommendedComPortKeyPrefix: function(projectName)
+                {
+                    projectName = projectName || gc.fileCache.getProjectName();
+                    return projectName + '_' + this.id + '_';
+                },
+                flashDevice: function()
+                {
+                    return Q.promise(function(resolve)
+                    {
+                        var sequencer = gc.connectionManager.sequencer;
+
+                        sequencer.when('downloadProgram').then(function()
+                        {
+                            var programLoader = this.programLoader;
+
+                            return this.waitForEvent(programLoader, 'programDownloadUIVisibilityChanged', 'isProgramDownloadBtnVisible', true,
+                                'isReplugNoticeVisible', true).then(programLoader.doProgramTargetDevice.bind(programLoader, this.addConsoleMessage.bind(this))).fail(function(reason)
+                            {
+                                this.onDisconnected(reason);
+                                throw reason;
+                            }.bind(this));
+                        }.bind(this)).then(resolve);
+
+                        sequencer.after('downloadProgram').schedule(
+                            'reconnect', gc.connectionManager.reconnectBackplane.bind(gc.connectionManager));
+                    }.bind(this));
+                },
+                getAdditionalProperties: function (prefix)
+                {
+                    return this._registerModel.getSymbolSuggestions(prefix);
+                },
+                getRegisterViewInformation: function(deviceIndex)
+                {
+                    var that = this;
+                    deviceIndex = deviceIndex || 0;
+                    return _readyPromise.promise.then(function()
+                    {
+                        return that._registerDefPromise.then(function(data)
+                        {
+                            return data.devices[deviceIndex].data;
+                        });
+                    });
+                }
+            });
+        }());
+
+    </script>
+
+</dom-module>

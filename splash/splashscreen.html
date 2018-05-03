@@ -1,0 +1,467 @@
+<!--
+`ti-splashscreen`
+
+Texas Instruments About Box - can display an application name, version number and copyright information with TI logo and branding.
+
+@group TI GUIComposer
+@element ti-splashscreen
+-->
+<!--
+    Copyright (c) 2014, Texas Instruments Incorporated
+    All rights reserved.
+
+    Redistribution and use in source and binary forms, with or without
+    modification, are permitted provided that the following conditions
+    are met:
+
+    *   Redistributions of source code must retain the above copyright
+    notice, this list of conditions and the following disclaimer.
+    notice, this list of conditions and the following disclaimer in the
+    documentation and/or other materials provided with the distribution.
+    *   Neither the name of Texas Instruments Incorporated nor the names of
+    its contributors may be used to endorse or promote products derived
+    from this software without specific prior written permission.
+
+    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+    AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+    THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+    PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+    CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+    EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+    PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+    OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+    WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+    OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+    EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+-->
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=560, initial-scale=1.0, maximum-scale=1.0">
+<meta name="mobile-web-app-capable" content="yes">
+<!-- <meta http-equiv="refresh" content="5;url=index.html" />  -->
+
+<style>
+    :host {
+        position: fixed;
+        top: 0 !important;
+        left: 0 !important;
+        opacity: 1;
+        z-index: 999;
+        pointer-events: none;
+        overflow: hidden;
+        width: 560px;
+        height: 270px;
+    }
+    
+    body {
+        font-family: "HelveticaNeue-Light", "Helvetica Neue Light", "Helvetica Neue", Helvetica, Arial, "Lucida Grande", sans-serif;
+        font-weight: 300;
+        overflow: hidden;
+        font-size: 3vw;
+    }
+    
+    .banner {
+        height: 50px;
+        padding-bottom: 18px;
+        padding-right: 18px;
+    }
+    
+    .evmName {
+        font-size: 1em;
+    }
+    
+    #progressbar {
+        display: block;
+        width: 100%;
+        height: 6px;
+        position: fixed;
+        z-index: 99999;
+        bottom: 0px;
+        left: 0px;
+        right: 0px;
+        padding: 0;
+        background-color: red;
+    }
+    
+    #progressbar > div {
+        width: 0%;
+        /* Adjust with JavaScript */
+        
+        height: 6px;
+    }
+</style>
+
+
+
+    <!-- Boualem <<<----------------------------- -->
+    <script>
+			var gc = gc || {};
+ /* Doesn't work in NW 0.13+ [...
+         // this needs to first or as early as possible
+        try {
+            var crashhandler = require('ti_crashhandler')();
+
+            if (crashhandler.crashDumpFilesExist()) {
+                crashhandler.post();
+            }
+        } catch (ex) {
+            console.log("Error creating ti_crashhandler");
+            console.log(ex);
+        }
+*/
+        // this needs to second  
+        var gui = require('nw.gui');
+  /*
+        try {
+            var ti_uncaught_Exception_handler = require('ti_uncaught_Exception_handler');
+            ti_uncaught_Exception_handler.setApplicationName(gui.App.manifest.name);
+            ti_uncaught_Exception_handler.setApplicationVersion(gui.App.manifest.splash_version);
+            console.log("ti_uncaught_Exception_handler created");
+
+            if (ti_uncaught_Exception_handler.uncaughtExceptionLogFileExist()) {
+                ti_uncaught_Exception_handler.post();
+                console.log("ti_uncaught_Exception_handler posted a log file");
+            }
+
+        } catch (ex1) {
+            console.log("Error creating ti_uncaught_Exception_handler");
+            console.log(ex1);
+        }
+
+
+        // this needs to third  
+        var myConfig = {
+            handleUncaughtExceptions: false,
+            "fileLogger": {
+                //"logDirectory": "../..",
+                "logFilename": "designer.log",
+                "json": false,
+                "timestamp": true,
+                "maxRollingFiles": 5,
+                "maxFileSize": 3145728,
+                "levels": {
+                    "defaultLevel": "info"
+                }
+            }
+        };
+
+        var logger = require('ti_logger')(myConfig);
+        logger.info("------------------------Splash screen Started");
+        */
+    </script>
+    <!-- ------------------------------- Boualem>>> -->
+
+</head>
+
+<body bgcolor="#0">
+
+
+    <table style="-webkit-user-select: none; position: absolute; border: none; margin: 0px; padding: 0; z-index: 800; width: 100%; height: 100%; left: 0; ">
+        <tbody>
+            <tr style="height: 66%;">
+                <td colspan="2" style="width: 100%; vertical-align: bottom; padding-right:5%">
+
+                    <label id="splash_title" style=" display: block; z-index: 900; font-weight: bold; width: 100%; text-align: right; font-size: 2em; white-space: nowrap; color: #FFFFFF; padding-bottom: 0.1em;">
+                    </label>
+                    <label id="splash_app_name" class="evmName" style="display: block;  font-weight: bold; width: 100%; text-align: right; z-index: 900; font-size: 2em; white-space: nowrap; color: #CC0000; padding-bottom:0.1em">
+                    </label>
+
+                </td>
+            </tr>
+            <tr style="height: 33%">
+                <td style="width: 100%; text-align: right; vertical-align: top; padding-right: 5%">
+                    <table style="width: 100%; height: 57px; background-color:#CC0000">
+                        <tbody>
+                            <tr>
+                                <td style="text-align: left; padding-left: 2%">
+                                    <!--	<label id="splashScreenProgressBar" visible="true" style="display: in-line; font: Helvetica Neue; color: #FFFFFF; font-size: 1.5em;">Loading ... 0%</label> -->
+                                </td>
+                                <td style="text-align: right;">
+                                    <object id="tiBanner" class="banner" type="image/svg+xml"  style="width:100%;"></object>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                </td>
+            </tr>
+            <tr>
+                <td style="text-align: right;">
+                    <label id="splash_copyright" style="display: block;  width: 100%; text-align: right; z-index: 900; font-size: 0.6em; white-space: nowrap; color: #FFFFFF;  padding-bottom: 2em;">
+                    </label>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div id="progressbar">
+        <div></div>
+    </div>
+
+    <script>
+	
+	
+        // logic that requires that is fully initialized should go here
+        // splashScreenProgressBar = document.getElementById("splashScreenProgressBar");
+        //splashScreenProgressBar.setProgress(100);
+        var getOS = function () {
+            // default to linux because it is not always possible to tell it from
+            // the
+            // appVersion
+            var os = 'linux';
+            if (navigator.appVersion.indexOf("Mac") != -1)
+                os = 'mac';
+            if (navigator.appVersion.indexOf("Win") != -1)
+                os = 'win32';
+            return os;
+        };
+        //var gui = require('nw.gui');
+		var isDesktop = function () {
+            var result = (typeof process !== 'undefined');
+            return result;
+        };
+		var _getNodeWebkitVersionStr = function () {
+            if (!isDesktop()) return null;
+            var nwVer = process.versions['nw'];
+            if (!nwVer) return null;
+            var firstDotIndex = nwVer.indexOf(".");
+            if (firstDotIndex < 0) return null;
+            var secondDotIndex = nwVer.substring(firstDotIndex+1).indexOf(".") + firstDotIndex + 1;
+            if (secondDotIndex < 0) return null;
+            var majorMinorVer = nwVer.substring(0, secondDotIndex);
+            return majorMinorVer;
+        };
+
+        var _getNodeWebkitVersionId = function () {
+            if (!isDesktop()) return null;
+            var majorMinorVer = _getNodeWebkitVersionStr();
+            if (!majorMinorVer) return 0;
+            var firstDotIndex = majorMinorVer.indexOf(".");
+            var majorVer = +majorMinorVer.substring(0, firstDotIndex);
+            var minorVer = +majorMinorVer.substring(firstDotIndex+1);
+            return majorVer * 100 + minorVer;
+        };
+		var getDefaultWindowOptions = function (titleArg, widthArg, heightArg) {
+            if (!isDesktop()) return null;
+            var gui = require('nw.gui');
+            var nwVerId = _getNodeWebkitVersionId();
+            var strTitle = titleArg;
+            if (!strTitle) {
+                strTitle = gui.App.manifest.splash_title;
+            }
+            var width = widthArg;
+            if ((width === null)||(width === undefined)) {
+                width = gui.App.manifest.main_width;
+            }
+            var height = heightArg;
+            if ((height === null)||(height === undefined)) {
+                height = gui.App.manifest.main_height;
+            }
+
+            var result = {
+                title: strTitle,
+                show: true,
+                frame: true,
+                position: 'center',
+                width: width,
+                height: height,
+                focus: true,
+                icon: "gui_icon.png"
+            };
+            if (nwVerId <= 12) {
+                result.toolbar = gui.App.manifest.window.toolbar;
+            }
+            return result;
+        };
+        /**
+         * splashOpenWindow opens a node-webkit window
+         *
+         * @param urlArg - the URL to display in the window
+         * @param optionsArg - the nodeWebkit options object, null for default values
+         * @param moveByArg - for cascading windows set to 25 else leave null
+         * @param callbackArg - the function to call back when window opens.  The window handle is passed as the only parameter.
+         */
+        splashOpenWindow = function (urlArg, optionsArg, moveByArg, callbackArg) {
+            var gui = require('nw.gui');
+            var url = urlArg;
+            console.log("splashOpenWindow: url="+urlArg);
+
+
+            var options = optionsArg;
+            if (!options) {
+                options = getDefaultWindowOptions(gui.App.manifest.splash_title, gui.App.manifest.main_width, gui.App.manifest.main_height)
+            }
+            var newWinPolicyHandler = function (frame, urlArg, policy) {
+                var policyOptions = options;
+                policy.setNewWindowManifest(policyOptions);
+            };
+            var winHandle;
+            var onOpenWindowCallback = function (winArg) {
+                var win = winArg;
+                if (!win) {
+                    win = winHandle;
+                }
+                if (!win){
+                    console.log("gc.Desktop.onOpenWindowCallback: winHandle not defined");
+                }
+                if ((win) && (win.on)) {
+                    win.on('new-win-policy', newWinPolicyHandler);
+                }
+                if (callbackArg) {
+                    callbackArg(win);
+                }
+                if (moveByArg) {
+                    win.moveBy(moveByArg, moveByArg);
+                }
+            };
+            var nwVerId = _getNodeWebkitVersionId();
+            if (nwVerId <= 12) {
+                winHandle = gui.Window.open(url, options);
+                // In order to avoid getting an "Unable to get render view in GetWindowObject" exception,
+                // wait for the window to be opened before trying to use the window object.
+                // See https://github.com/edjafarov/node-webkit-desktop-notification/issues/2
+                window.setTimeout(function(){
+                    onOpenWindowCallback(winHandle);
+                },50);
+            } else {
+                if (urlArg.indexOf('http') === -1) {
+                    var path = require('path');
+                    url = path.normalize(path.join(process.cwd(),urlArg));
+                    console.log("gc.desktop.openWindow: normalized url=" + url);
+                }
+                gui.Window.open(url,options,onOpenWindowCallback);
+            }
+
+        };
+        var win = gui.Window.get();
+        var new_win = undefined;
+        window.onload = function () {
+            // To avoid flickering and displaying an blank frame during startup,
+            // the package.json sets "window": {"show": false} which hides the window.
+            // Make the splash window visible when the script starts executing
+            //win.resizeTo( 800,700);
+            win.show();
+            win.setAlwaysOnTop(true);
+            win.focus();
+            console.log('splashscreen: in window.onload: win.process='+win.process);
+        }
+        var myTimeout;
+
+        var path = require("path");
+        var fs = require('fs');
+        var splashDir = path.normalize(process.cwd());
+        var tiBanner = document.getElementById('tiBanner');
+        tiBanner.data= 'ti_horiz_banner.svg';
+        var widget = document.getElementById('splashScreenProgressBar');
+        var progressBar = document.getElementById("progressbar");
+        var progressPercent = 0;
+        var splash_title_label = document.getElementById('splash_title');
+        var splash_app_name_label = document.getElementById('splash_app_name');
+        var splash_copyright_label = document.getElementById('splash_copyright');
+        splash_title_label.innerHTML = gui.App.manifest.splash_title;
+        if (gui.App.manifest.splash_title !== gui.App.manifest.splash_application_name) {
+            splash_app_name_label.innerHTML = gui.App.manifest.splash_application_name;
+        } else {
+            splash_app_name_label.innerHTML = "";
+        }
+        splash_copyright_label.innerHTML = "&copy;&nbsp;" + gui.App.manifest.splash_copyright_notice;
+        var debugLoopCtr = 0;
+        var debugEnabled = gui.App.manifest.debug_enabled;
+        var debugSplashScreenEnabled = gui.App.manifest.debug_splashscreen_enabled;
+        var isStandaloneApp =gui.App.manifest.standalone_app;
+        var os = getOS();
+        var onWindowOpen = function(winHandle) {
+            //console.log("splashscreen: in gui.Window.open callback!");
+            new_win = winHandle;
+            if (new_win && new_win.window) {
+                //console.log("splashscreen: winHandle.window defined... winHandle=" + winHandle);
+
+                new_win.window.opener = new_win;
+				new_win.getNodeWebkit = function(windowHandle, ownerWindow){
+				   	windowHandle.process = ownerWindow.process;
+          		    windowHandle.nw = ownerWindow.nw;
+					windowHandle.require = ownerWindow.require;
+                	windowHandle.nw_shell = ownerWindow.nw.Shell;
+                	windowHandle.nw_window = ownerWindow.nw.Window;
+                	if ((ownerWindow) && (ownerWindow.process)) {
+                        //windowHandle.console.log("getNodeWebkit: successfully copied over nw context.");
+                    } else {
+                        //windowHandle.console.log("getNodeWebkit: failed to copy over nw context.");
+                    }
+				};
+				new_win.getNodeWebkit(new_win,window);
+                console.log("onWindowOpen: successfully copied over nw context.");
+
+
+            } else {
+                console.log("ERROR: winHandle.window not defined! winHandle=" + winHandle);
+            }
+        };
+        var _updateProgress = function () {
+            progressPercent += 1;
+            if (progressPercent > 100.0) {
+                if ((new_win) && (new_win.focus)) {
+                    new_win.focus();
+                }
+                window.close();
+            } else {
+                if (progressPercent === 10) {
+                    // for debugging, to allow time to turn on debugger, uncomment out the next line,
+                    // set debugEnabled = true and modify package.json to show toolbar, frame, etc.
+
+                    if (debugSplashScreenEnabled && (debugLoopCtr < 16)) {
+                        progressPercent = 0;
+                        debugLoopCtr++;
+                    } else {
+                        if ((!isStandaloneApp) || (gui.App.manifest.name === 'designer')) {
+                            var server = require("ti_guicomposer_server/ti_guicomposer_server.js");
+                            server.start(null, true, function (err, port) {
+                                var url = "http://127.0.0.1";
+								if (port !== undefined) {
+								   url += ":"+ port;
+								} else {
+								   console.log("No port defined.");
+								}
+								
+                                if (gui.App.manifest.name != 'designer') {
+                                    if (!isStandaloneApp) {
+                                        url += '/workspaceserver/workspace/' + gui.App.manifest.name + '/index.html';
+                                    } else {
+									    url += '/workspaceserver/' + gui.App.manifest.name + '/index.html';
+                                    }
+                                } else {
+                                    url += '/index.html';
+                                }
+								splashOpenWindow(url, null, 0, onWindowOpen);
+                            });
+                        } else {
+                        	var startupListener = function(server) {
+                        		var url = "http://127.0.0.1:" + server.address().port;
+								console.log("Open window: " + url);
+								splashOpenWindow(url, null, 0, onWindowOpen);
+                        	}
+                        
+							var appServer = require("./app_server");
+							appServer.start(startupListener);
+                        }
+                    }
+
+                }
+                if (widget != null) {
+                    widget.innerHTML = progressPercent + "%";
+                }
+                progressBar.style.width = progressPercent + "%";
+
+                myTimeout = window.setTimeout(function () {
+                    updateProgress()
+                }, 50);
+            }
+        };
+        var updateProgress = _updateProgress.bind(this);
+        updateProgress();
+    </script>
+</body>
+
+</html>
